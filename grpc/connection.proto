@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package dashboard;
+option go_package = "backend/message";
+
+service ConnectionGrpc {
+    rpc GetConnectionProfile (GetConnectionProfileRequest) returns (ConnectionProfile)  {}
+    rpc SaveConnectionProfile (SaveConnectionProfileRequest) returns (ConnectionProfile)  {}
+    rpc Connect(ConnectRequest) returns (ConnectResponse) {}
+}
+
+message ConnectionProfile {
+    string data = 1;
+}
+
+message GetConnectionProfileRequest {}
+
+message SaveConnectionProfileRequest {
+    string path = 1;
+}
+
+message ConnectRequest {}
+message ConnectResponse {}
+
+

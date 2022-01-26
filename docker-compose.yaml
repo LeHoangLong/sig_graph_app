@@ -1,0 +1,10 @@
+version: '3.1'
+services:
+  db:
+      image: postgres:14.1
+      environment:
+          - POSTGRES_DB=hyper
+          - POSTGRES_USER=admin
+          - POSTGRES_PASSWORD=admin
+      volumes: 
+          - ./db:/var/lib/postgresql/data

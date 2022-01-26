@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dashboard;
+option go_package = "backend/message";
+
+service ChannelGrpc {
+    rpc GetChannels (GetChannelsRequest) returns (GetChannelsResponse)  {}
+}
+
+message GetChannelsRequest {
+}
+
+message GetChannelsResponse {
+	repeated string channels = 1;
+}
+
+

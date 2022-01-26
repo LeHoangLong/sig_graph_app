@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package dashboard;
+option go_package = "backend/message";
+
+service UserGrpc {
+    rpc CreateUser (CreateUserRequest) returns (CreateUserResponse)  {}
+    rpc Login (LoginRequest) returns (LoginResponse) {}
+}
+
+message CreateUserRequest {
+    string username = 1;
+    string password = 2;
+    string certPath = 3;
+    string certKey = 4;
+    string organizationMspId = 5;
+}
+
+message CreateUserResponse {}
+
+message LoginRequest {
+    string username = 1;
+    string password = 2;
+}
+
+message LoginResponse {
+}
+
+
