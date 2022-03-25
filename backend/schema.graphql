@@ -1,0 +1,22 @@
+scalar Time
+
+type Material {
+  Id: String!,
+  Name: String!,
+  Unit: String!,
+  Quantity: String!,
+  CreatedTime: Time!,
+}
+
+type Mutation {
+  createMaterial(
+    iName: String!, 
+    iUnit: String!, 
+    iQuantity: String!,
+  ): Material
+}
+
+type Query {
+  material(id: String!): Material
+  materials: [Material!]!
+}

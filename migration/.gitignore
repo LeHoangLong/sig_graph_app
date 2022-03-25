@@ -1,0 +1,4 @@
+node_modules/
+build/
+initial_data/config.yaml
+.npm/

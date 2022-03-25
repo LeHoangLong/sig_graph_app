@@ -1,59 +1,50 @@
 package controllers
 
-import (
-	"backend/internal/common"
-	"backend/internal/services"
-)
+import "backend/internal/services"
 
 type UserController struct {
-	storageService    *services.UserStorageService
-	enrollmentService *services.EnrollUserHyperledgerSerivce
+	userService *services.UserService
+	jwtService  *services.JwtService
 }
 
-func MakeUserController(
-	storageService *services.UserStorageService,
-	enrollmentService *services.EnrollUserHyperledgerSerivce,
-) *UserController {
-	return &UserController{
-		storageService:    storageService,
-		enrollmentService: enrollmentService,
-	}
-}
-
-func (c *UserController) CreateUser(
-	username string,
-	password string,
-	organizationMspId string,
-	publicCertPath string,
-	privateKeyPath string,
-) error {
-	resultChan := make(chan common.WrappedError)
-	go c.storageService.CreateUser(username, password, resultChan)
-	result := <-resultChan
-	if result.Error != nil {
-		return result.Error
-	}
-
-	go c.enrollmentService.CreateIdentity(
-		username,
-		organizationMspId,
-		publicCertPath,
-		privateKeyPath,
-		resultChan,
-	)
-
-	result = <-resultChan
-	return result.Error
-}
-
-func (c *UserController) Login(username string, password string) error {
-	errorChan := make(chan common.WrappedError)
-	go c.storageService.VerifyUser(username, password, errorChan)
-	err := (<-errorChan).Error
+func (c *UserController) LogIn(username string, password string) (string, error) {
+	err := c.userService.VerifyUser(username, password)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	go c.storageService.SetCurrentUser(username, errorChan)
-	return (<-errorChan).Error
+	token, err := c.jwtService.GenerateToken(username)
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
+}
+
+func (c *UserController) LogInWithToken(token string) (string, error) {
+	username, err := c.jwtService.ParseToken(token)
+	if err != nil {
+		return "", err
+	}
+
+	err = c.userService.DoesUserExist(username)
+	if err != nil {
+		return "", err
+	}
+
+	return username, nil
+}
+
+func (c *UserController) SignUp(username string, password string) (string, error) {
+	err := c.userService.SignUp(username, password)
+	if err != nil {
+		return "", err
+	}
+
+	token, err := c.jwtService.GenerateToken(username)
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
 }

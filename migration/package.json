@@ -1,0 +1,19 @@
+{
+  "name": "migration",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "migrate": "^1.7.0",
+    "pg": "^8.7.3",
+    "yaml": "^1.10.2"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.6.5"
+  }
+}

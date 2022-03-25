@@ -1,10 +1,35 @@
 version: '3.1'
 services:
-  db:
-      image: postgres:14.1
-      environment:
-          - POSTGRES_DB=hyper
-          - POSTGRES_USER=admin
-          - POSTGRES_PASSWORD=admin
-      volumes: 
-          - ./db:/var/lib/postgresql/data
+    db:
+        image: postgres:14.1
+        environment:
+            - POSTGRES_DB=hyper
+            - POSTGRES_USER=admin
+            - POSTGRES_PASSWORD=admin
+        volumes: 
+            - ./db:/var/lib/postgresql/data
+        network_mode: host
+
+    backend:
+        image: application_backend
+        volumes:
+            - ./backend:/root
+        command: sleep infinity
+        working_dir: /root
+        network_mode: host
+
+    migrations:
+        image: node:17-buster-slim
+        volumes:
+            - ./migration:/root
+        command: sleep infinity
+        environment:
+            - PGHOST=localhost
+            - PGUSER=admin
+            - PGDATABASE=hyper
+            - PGPASSWORD=admin
+            - PGPORT=5432
+            - CONFIG_FILE=./initial_data/config.yaml
+        working_dir: /root
+        network_mode: host
+        

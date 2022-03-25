@@ -1,0 +1,14 @@
+WalletPath: .wallet
+HLConfigPath: connection-org1.yaml
+HLWalletIdentity: appUser
+PublicKeyPath: test_key.pub
+PrivateKeyPath: test_key.private
+ChannelName: mychannel
+ContractName: token
+OrgMspId: Org1MSP
+DbUser: admin
+DbName: hyper
+DbPassword: admin
+DbHost: localhost
+DbPort: 5432
+DbSslmode: disable
