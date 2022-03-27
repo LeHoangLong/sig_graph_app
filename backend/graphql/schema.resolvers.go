@@ -50,8 +50,8 @@ func (r *queryResolver) Materials(ctx context.Context) ([]*Material, error) {
 	return ret, nil
 }
 
-func (r *queryResolver) Peers(iCtx context.Context) ([]*Peer, error) {
-	peers, err := r.PeersController.ListPeers(iCtx)
+func (r *queryResolver) Peers(ctx context.Context) ([]*Peer, error) {
+	peers, err := r.PeersController.ListPeers(ctx)
 	if err != nil {
 		return []*Peer{}, err
 	}
@@ -72,10 +72,3 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.

@@ -56,9 +56,9 @@ type ComplexityRoot struct {
 	}
 
 	Peer struct {
-		Alias func(childComplexity int) int
-		ID    func(childComplexity int) int
-		Keys  func(childComplexity int) int
+		Alias      func(childComplexity int) int
+		ID         func(childComplexity int) int
+		PublicKeys func(childComplexity int) int
 	}
 
 	PublicKey struct {
@@ -158,12 +158,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Peer.ID(childComplexity), true
 
-	case "Peer.Keys":
-		if e.complexity.Peer.Keys == nil {
+	case "Peer.PublicKeys":
+		if e.complexity.Peer.PublicKeys == nil {
 			break
 		}
 
-		return e.complexity.Peer.Keys(childComplexity), true
+		return e.complexity.Peer.PublicKeys(childComplexity), true
 
 	case "PublicKey.Id":
 		if e.complexity.PublicKey.ID == nil {
@@ -287,7 +287,7 @@ type PublicKey {
 type Peer {
   Id: Int!,
   Alias: String!,
-  Keys: [PublicKey!]!,
+  PublicKeys: [PublicKey!]!,
 }
 
 type Mutation {
@@ -710,7 +710,7 @@ func (ec *executionContext) _Peer_Alias(ctx context.Context, field graphql.Colle
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Peer_Keys(ctx context.Context, field graphql.CollectedField, obj *Peer) (ret graphql.Marshaler) {
+func (ec *executionContext) _Peer_PublicKeys(ctx context.Context, field graphql.CollectedField, obj *Peer) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -728,7 +728,7 @@ func (ec *executionContext) _Peer_Keys(ctx context.Context, field graphql.Collec
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Keys, nil
+		return obj.PublicKeys, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2270,9 +2270,9 @@ func (ec *executionContext) _Peer(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "Keys":
+		case "PublicKeys":
 			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Peer_Keys(ctx, field, obj)
+				return ec._Peer_PublicKeys(ctx, field, obj)
 			}
 
 			out.Values[i] = innerFunc(ctx)

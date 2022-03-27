@@ -16,7 +16,7 @@ type PublicKey {
 type Peer {
   Id: Int!,
   Alias: String!,
-  Keys: [PublicKey!]!,
+  PublicKeys: [PublicKey!]!,
 }
 
 type Mutation {

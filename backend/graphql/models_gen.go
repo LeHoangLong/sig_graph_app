@@ -15,9 +15,9 @@ type Material struct {
 }
 
 type Peer struct {
-	ID    int          `json:"Id"`
-	Alias string       `json:"Alias"`
-	Keys  []*PublicKey `json:"Keys"`
+	ID         int          `json:"Id"`
+	Alias      string       `json:"Alias"`
+	PublicKeys []*PublicKey `json:"PublicKeys"`
 }
 
 type PublicKey struct {

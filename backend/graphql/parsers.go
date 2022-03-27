@@ -29,8 +29,8 @@ func ParsePeer(iPeer models.Peer) Peer {
 		keys[index] = &parsedKey
 	}
 	return Peer{
-		ID:    iPeer.Id,
-		Alias: iPeer.Alias,
-		Keys:  keys,
+		ID:         iPeer.Id,
+		Alias:      iPeer.Alias,
+		PublicKeys: keys,
 	}
 }
