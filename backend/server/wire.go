@@ -150,37 +150,77 @@ var Set = wire.NewSet(
 	InitializeHLGatewayInitializer,
 	InitializeChannelName,
 	InitializeContractName,
-	InitializeSqlDriver,
-	InitializeMaterialRepositorySql,
-	wire.Bind(new(repositories.MaterialRepositoryI), new(repositories.MaterialRepositorySql)),
 )
 
-func InitializeMaterialContract() services.MaterialContract {
-	wire.Build(services.MakeMaterialContract, Set, InitializeGraphContractSignature, InitializePublicKey)
-	return services.MaterialContract{}
-}
+/// Initialize repositories
+var db *sql.DB = nil
 
 func InitializeSqlDriver() *sql.DB {
-	config := InitConfig()
-	connStr := ""
-	connStr += " user=" + config.DbUser
-	connStr += " dbname=" + config.DbName
-	connStr += " password=" + config.DbPassword
-	connStr += " host=" + config.DbHost
-	connStr += " sslmode=" + config.DbSslmode
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		panic("could not connect to database")
+	if db == nil {
+		var err error
+		config := InitConfig()
+		connStr := ""
+		connStr += " user=" + config.DbUser
+		connStr += " dbname=" + config.DbName
+		connStr += " password=" + config.DbPassword
+		connStr += " host=" + config.DbHost
+		connStr += " sslmode=" + config.DbSslmode
+		db, err = sql.Open("postgres", connStr)
+		if err != nil {
+			panic("could not connect to database")
+		}
 	}
 	return db
 }
+
+var MaterialRepositorySet = wire.NewSet(
+	InitializeMaterialRepositorySql,
+	wire.Bind(new(repositories.MaterialRepositoryI), new(repositories.MaterialRepositorySql)),
+)
 
 func InitializeMaterialRepositorySql() repositories.MaterialRepositorySql {
 	wire.Build(repositories.MakeMaterialRepositorySql, InitializeSqlDriver)
 	return repositories.MaterialRepositorySql{}
 }
 
+func InitializePeerRepositorySql() repositories.PeerRepositorySql {
+	wire.Build(repositories.MakePeerRepositorySql, InitializeSqlDriver)
+	return repositories.PeerRepositorySql{}
+}
+
+var PeerSet = wire.NewSet(
+	InitializePeerRepositorySql,
+	wire.Bind(new(repositories.PeerRepositoryI), new(repositories.PeerRepositorySql)),
+)
+
+func InitializePeerController() controllers.PeersController {
+	wire.Build(controllers.MakePeersController, PeerSet)
+	return controllers.PeersController{}
+}
+
+func InitializeUserKeyRepositorySql() repositories.UserKeyRepositorySql {
+	wire.Build(repositories.MakeUserKeyRepositorySql, InitializeSqlDriver)
+	return repositories.UserKeyRepositorySql{}
+}
+
+var UserKeySet = wire.NewSet(
+	InitializeUserKeyRepositorySql,
+	wire.Bind(new(repositories.UserKeyRepositoryI), new(repositories.UserKeyRepositorySql)),
+)
+
+/// Finished initializing repositories
+
+func InitializeMaterialContract() services.MaterialContract {
+	wire.Build(services.MakeMaterialContract, Set, InitializeGraphContractSignature, InitializePublicKey)
+	return services.MaterialContract{}
+}
+
+func InitializeMaterialRepositoryService() services.MaterialRepositoryService {
+	wire.Build(services.MakeMaterialRepositoryService, MaterialRepositorySet, UserKeySet)
+	return services.MaterialRepositoryService{}
+}
+
 func InitializeMaterialContractController() controllers.MaterialContractController {
-	wire.Build(controllers.MakeMaterialContractController, InitializeMaterialContract, Set)
+	wire.Build(controllers.MakeMaterialContractController, InitializeMaterialContract, InitializeMaterialRepositoryService)
 	return controllers.MaterialContractController{}
 }

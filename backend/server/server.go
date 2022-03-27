@@ -24,6 +24,7 @@ func main() {
 		graphql.Config{
 			Resolvers: &graphql.Resolver{
 				MaterialContractController: InitializeMaterialContractController(),
+				PeersController:            InitializePeerController(),
 			},
 		},
 	)))

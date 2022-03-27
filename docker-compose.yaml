@@ -13,15 +13,15 @@ services:
     backend:
         image: application_backend
         volumes:
-            - ./backend:/root
-        command: sleep infinity
-        working_dir: /root
+            - ./backend:/root/workspace
+        command: air
+        working_dir: /root/workspace
         network_mode: host
 
     migrations:
         image: node:17-buster-slim
         volumes:
-            - ./migration:/root
+            - ./migration:/opt/app/workspace
         command: sleep infinity
         environment:
             - PGHOST=localhost
@@ -30,6 +30,6 @@ services:
             - PGPASSWORD=admin
             - PGPORT=5432
             - CONFIG_FILE=./initial_data/config.yaml
-        working_dir: /root
+        working_dir: /opt/app/workspace
         network_mode: host
         

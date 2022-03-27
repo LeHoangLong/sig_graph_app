@@ -17,10 +17,14 @@ func MakeMaterialRepositorySql(
 	}
 }
 
-func (r MaterialRepositorySql) AddMaterial(iUserId int, iMaterial models.Material) error {
+func (r MaterialRepositorySql) AddOrUpdateMaterial(
+	iPublicKeyId int,
+	iMaterial models.Material,
+) error {
+
 	_, err := r.db.Query(`INSERT INTO "material"(
-			user_id,
 			id,
+			public_key_id,
 			name,
 			quantity,
 			unit,
@@ -32,9 +36,17 @@ func (r MaterialRepositorySql) AddMaterial(iUserId int, iMaterial models.Materia
 			$4,
 			$5,
 			$6
-		)`,
-		iUserId,
+		) 
+		ON CONFLICT (id) DO UPDATE
+		SET 
+			public_key_id = $2,
+			name = $3,
+			quantity = $4,
+			unit = $5,
+			created_time = $6
+		`,
 		iMaterial.Id,
+		iPublicKeyId,
 		iMaterial.Name,
 		iMaterial.Quantity.String(),
 		iMaterial.Unit,
@@ -44,7 +56,9 @@ func (r MaterialRepositorySql) AddMaterial(iUserId int, iMaterial models.Materia
 	return err
 }
 
-func (r MaterialRepositorySql) FetchMaterials(iUserId int) ([]models.Material, error) {
+func (r MaterialRepositorySql) FetchMaterials(
+	iPublicKeyId int,
+) ([]models.Material, error) {
 	rows, err := r.db.Query(`SELECT 
 			id,
 			name,
@@ -52,8 +66,8 @@ func (r MaterialRepositorySql) FetchMaterials(iUserId int) ([]models.Material, e
 			unit,
 			created_time
 		FROM "material" 
-		WHERE user_id = $1
-	`, iUserId)
+		WHERE public_key_id = $1
+	`, iPublicKeyId)
 
 	if err != nil {
 		return []models.Material{}, err

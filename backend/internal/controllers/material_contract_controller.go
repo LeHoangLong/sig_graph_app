@@ -2,28 +2,27 @@ package controllers
 
 import (
 	"backend/internal/models"
-	"backend/internal/repositories"
 	"backend/internal/services"
 	"context"
 	"fmt"
 )
 
 type MaterialContractController struct {
-	contract   services.MaterialContract
-	repository repositories.MaterialRepositoryI
+	contract          services.MaterialContract
+	repositoryService services.MaterialRepositoryService
 }
 
 func MakeMaterialContractController(
 	iContract services.MaterialContract,
-	iRepositoy repositories.MaterialRepositoryI,
+	iRepositoryService services.MaterialRepositoryService,
 ) MaterialContractController {
 	return MaterialContractController{
-		contract:   iContract,
-		repository: iRepositoy,
+		contract:          iContract,
+		repositoryService: iRepositoryService,
 	}
 }
 
-func (c MaterialContractController) CreateMaterial(
+func (c MaterialContractController) CreateMaterialForCurrentUser(
 	iCtx context.Context,
 	iName string,
 	iUnit string,
@@ -44,8 +43,12 @@ func (c MaterialContractController) CreateMaterial(
 		return models.Material{}, err
 	}
 
-	err = c.repository.AddMaterial(
-		services.GetUserFromContext(iCtx),
+	userId, err := services.GetCurrentUserFromContext(iCtx)
+	if err != nil {
+		return models.Material{}, err
+	}
+	material, err = c.repositoryService.AddOrUpdateMaterialToUser(
+		userId,
 		material,
 	)
 
@@ -57,21 +60,36 @@ func (c MaterialContractController) CreateMaterial(
 }
 
 func (c MaterialContractController) GetMaterialById(
+	iCtx context.Context,
 	iMaterialId string,
 ) (models.Material, error) {
+	userId, err := services.GetCurrentUserFromContext(iCtx)
+	if err != nil {
+		return models.Material{}, err
+	}
+
 	material, err := c.contract.GetMaterialById(
 		iMaterialId,
 	)
+
+	doesMaterialBelongToUser, err := c.repositoryService.DoesMaterialBelongToUser(userId, material)
+	if err != nil {
+		return models.Material{}, err
+	}
+
+	if doesMaterialBelongToUser {
+		material, err = c.repositoryService.AddOrUpdateMaterialToUser(userId, material)
+	}
+
 	return material, err
 }
 
-func (c MaterialContractController) ListMaterials(
+func (c MaterialContractController) ListMaterialsOfCurrentUser(
 	iCtx context.Context,
 ) ([]models.Material, error) {
-	materials, err := c.repository.FetchMaterials(services.GetUserFromContext(iCtx))
+	userId, err := services.GetCurrentUserFromContext(iCtx)
 	if err != nil {
 		return []models.Material{}, err
 	}
-
-	return materials, nil
+	return c.repositoryService.FetchMaterialsOfUser(userId)
 }

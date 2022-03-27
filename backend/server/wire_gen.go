@@ -54,6 +54,30 @@ func InitializeGraphContractSignature() services.GraphContractSignature {
 	return graphContractSignature
 }
 
+func InitializeMaterialRepositorySql() repositories.MaterialRepositorySql {
+	sqlDB := InitializeSqlDriver()
+	materialRepositorySql := repositories.MakeMaterialRepositorySql(sqlDB)
+	return materialRepositorySql
+}
+
+func InitializePeerRepositorySql() repositories.PeerRepositorySql {
+	sqlDB := InitializeSqlDriver()
+	peerRepositorySql := repositories.MakePeerRepositorySql(sqlDB)
+	return peerRepositorySql
+}
+
+func InitializePeerController() controllers.PeersController {
+	peerRepositorySql := InitializePeerRepositorySql()
+	peersController := controllers.MakePeersController(peerRepositorySql)
+	return peersController
+}
+
+func InitializeUserKeyRepositorySql() repositories.UserKeyRepositorySql {
+	sqlDB := InitializeSqlDriver()
+	userKeyRepositorySql := repositories.MakeUserKeyRepositorySql(sqlDB)
+	return userKeyRepositorySql
+}
+
 func InitializeMaterialContract() services.MaterialContract {
 	hlGatewayInitializer := InitializeHLGatewayInitializer()
 	channelName := InitializeChannelName()
@@ -65,16 +89,17 @@ func InitializeMaterialContract() services.MaterialContract {
 	return materialContract
 }
 
-func InitializeMaterialRepositorySql() repositories.MaterialRepositorySql {
-	db := InitializeSqlDriver()
-	materialRepositorySql := repositories.MakeMaterialRepositorySql(db)
-	return materialRepositorySql
+func InitializeMaterialRepositoryService() services.MaterialRepositoryService {
+	materialRepositorySql := InitializeMaterialRepositorySql()
+	userKeyRepositorySql := InitializeUserKeyRepositorySql()
+	materialRepositoryService := services.MakeMaterialRepositoryService(materialRepositorySql, userKeyRepositorySql)
+	return materialRepositoryService
 }
 
 func InitializeMaterialContractController() controllers.MaterialContractController {
 	materialContract := InitializeMaterialContract()
-	materialRepositorySql := InitializeMaterialRepositorySql()
-	materialContractController := controllers.MakeMaterialContractController(materialContract, materialRepositorySql)
+	materialRepositoryService := InitializeMaterialRepositoryService()
+	materialContractController := controllers.MakeMaterialContractController(materialContract, materialRepositoryService)
 	return materialContractController
 }
 
@@ -185,21 +210,37 @@ func InitializeContractName() drivers.ContractName {
 var Set = wire.NewSet(drivers.MakeSmartContractDriverHL, wire.Bind(new(drivers.SmartContractDriverI), new(drivers.SmartContractDriverHL)), InitializeHLGatewayInitializer,
 	InitializeChannelName,
 	InitializeContractName,
-	InitializeSqlDriver,
-	InitializeMaterialRepositorySql, wire.Bind(new(repositories.MaterialRepositoryI), new(repositories.MaterialRepositorySql)),
 )
 
+/// Initialize repositories
+var db *sql.DB = nil
+
 func InitializeSqlDriver() *sql.DB {
-	config := InitConfig()
-	connStr := ""
-	connStr += " user=" + config.DbUser
-	connStr += " dbname=" + config.DbName
-	connStr += " password=" + config.DbPassword
-	connStr += " host=" + config.DbHost
-	connStr += " sslmode=" + config.DbSslmode
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		panic("could not connect to database")
+	if db == nil {
+		var err error
+		config := InitConfig()
+		connStr := ""
+		connStr += " user=" + config.DbUser
+		connStr += " dbname=" + config.DbName
+		connStr += " password=" + config.DbPassword
+		connStr += " host=" + config.DbHost
+		connStr += " sslmode=" + config.DbSslmode
+		db, err = sql.Open("postgres", connStr)
+		if err != nil {
+			panic("could not connect to database")
+		}
 	}
 	return db
 }
+
+var MaterialRepositorySet = wire.NewSet(
+	InitializeMaterialRepositorySql, wire.Bind(new(repositories.MaterialRepositoryI), new(repositories.MaterialRepositorySql)),
+)
+
+var PeerSet = wire.NewSet(
+	InitializePeerRepositorySql, wire.Bind(new(repositories.PeerRepositoryI), new(repositories.PeerRepositorySql)),
+)
+
+var UserKeySet = wire.NewSet(
+	InitializeUserKeyRepositorySql, wire.Bind(new(repositories.UserKeyRepositoryI), new(repositories.UserKeyRepositorySql)),
+)

@@ -8,4 +8,5 @@ import "backend/internal/controllers"
 
 type Resolver struct {
 	MaterialContractController controllers.MaterialContractController
+	PeersController            controllers.PeersController
 }

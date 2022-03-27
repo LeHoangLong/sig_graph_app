@@ -55,9 +55,21 @@ type ComplexityRoot struct {
 		CreateMaterial func(childComplexity int, iName string, iUnit string, iQuantity string) int
 	}
 
+	Peer struct {
+		Alias func(childComplexity int) int
+		ID    func(childComplexity int) int
+		Keys  func(childComplexity int) int
+	}
+
+	PublicKey struct {
+		ID    func(childComplexity int) int
+		Value func(childComplexity int) int
+	}
+
 	Query struct {
 		Material  func(childComplexity int, id string) int
 		Materials func(childComplexity int) int
+		Peers     func(childComplexity int) int
 	}
 }
 
@@ -67,6 +79,7 @@ type MutationResolver interface {
 type QueryResolver interface {
 	Material(ctx context.Context, id string) (*Material, error)
 	Materials(ctx context.Context) ([]*Material, error)
+	Peers(ctx context.Context) ([]*Peer, error)
 }
 
 type executableSchema struct {
@@ -131,6 +144,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.CreateMaterial(childComplexity, args["iName"].(string), args["iUnit"].(string), args["iQuantity"].(string)), true
 
+	case "Peer.Alias":
+		if e.complexity.Peer.Alias == nil {
+			break
+		}
+
+		return e.complexity.Peer.Alias(childComplexity), true
+
+	case "Peer.Id":
+		if e.complexity.Peer.ID == nil {
+			break
+		}
+
+		return e.complexity.Peer.ID(childComplexity), true
+
+	case "Peer.Keys":
+		if e.complexity.Peer.Keys == nil {
+			break
+		}
+
+		return e.complexity.Peer.Keys(childComplexity), true
+
+	case "PublicKey.Id":
+		if e.complexity.PublicKey.ID == nil {
+			break
+		}
+
+		return e.complexity.PublicKey.ID(childComplexity), true
+
+	case "PublicKey.Value":
+		if e.complexity.PublicKey.Value == nil {
+			break
+		}
+
+		return e.complexity.PublicKey.Value(childComplexity), true
+
 	case "Query.material":
 		if e.complexity.Query.Material == nil {
 			break
@@ -149,6 +197,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Materials(childComplexity), true
+
+	case "Query.peers":
+		if e.complexity.Query.Peers == nil {
+			break
+		}
+
+		return e.complexity.Query.Peers(childComplexity), true
 
 	}
 	return 0, false
@@ -224,6 +279,17 @@ type Material {
   CreatedTime: Time!,
 }
 
+type PublicKey {
+  Id: Int!,
+  Value: String!,  
+}
+
+type Peer {
+  Id: Int!,
+  Alias: String!,
+  Keys: [PublicKey!]!,
+}
+
 type Mutation {
   createMaterial(
     iName: String!, 
@@ -235,6 +301,7 @@ type Mutation {
 type Query {
   material(id: String!): Material
   materials: [Material!]!
+  peers: [Peer!]!
 }`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -573,6 +640,181 @@ func (ec *executionContext) _Mutation_createMaterial(ctx context.Context, field 
 	return ec.marshalOMaterial2ᚖbackendᚋgraphqlᚐMaterial(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Peer_Id(ctx context.Context, field graphql.CollectedField, obj *Peer) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Peer",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Peer_Alias(ctx context.Context, field graphql.CollectedField, obj *Peer) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Peer",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Alias, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Peer_Keys(ctx context.Context, field graphql.CollectedField, obj *Peer) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Peer",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Keys, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*PublicKey)
+	fc.Result = res
+	return ec.marshalNPublicKey2ᚕᚖbackendᚋgraphqlᚐPublicKeyᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PublicKey_Id(ctx context.Context, field graphql.CollectedField, obj *PublicKey) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "PublicKey",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PublicKey_Value(ctx context.Context, field graphql.CollectedField, obj *PublicKey) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "PublicKey",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Value, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_material(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -645,6 +887,41 @@ func (ec *executionContext) _Query_materials(ctx context.Context, field graphql.
 	res := resTmp.([]*Material)
 	fc.Result = res
 	return ec.marshalNMaterial2ᚕᚖbackendᚋgraphqlᚐMaterialᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_peers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Peers(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*Peer)
+	fc.Result = res
+	return ec.marshalNPeer2ᚕᚖbackendᚋgraphqlᚐPeerᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1963,6 +2240,98 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 	return out
 }
 
+var peerImplementors = []string{"Peer"}
+
+func (ec *executionContext) _Peer(ctx context.Context, sel ast.SelectionSet, obj *Peer) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, peerImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Peer")
+		case "Id":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Peer_Id(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "Alias":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Peer_Alias(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "Keys":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Peer_Keys(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var publicKeyImplementors = []string{"PublicKey"}
+
+func (ec *executionContext) _PublicKey(ctx context.Context, sel ast.SelectionSet, obj *PublicKey) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, publicKeyImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PublicKey")
+		case "Id":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._PublicKey_Id(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "Value":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._PublicKey_Value(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var queryImplementors = []string{"Query"}
 
 func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -2012,6 +2381,29 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_materials(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx, innerFunc)
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return rrm(innerCtx)
+			})
+		case "peers":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_peers(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -2474,6 +2866,21 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}) (int, error) {
+	res, err := graphql.UnmarshalInt(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	res := graphql.MarshalInt(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) marshalNMaterial2ᚕᚖbackendᚋgraphqlᚐMaterialᚄ(ctx context.Context, sel ast.SelectionSet, v []*Material) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -2526,6 +2933,114 @@ func (ec *executionContext) marshalNMaterial2ᚖbackendᚋgraphqlᚐMaterial(ctx
 		return graphql.Null
 	}
 	return ec._Material(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPeer2ᚕᚖbackendᚋgraphqlᚐPeerᚄ(ctx context.Context, sel ast.SelectionSet, v []*Peer) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPeer2ᚖbackendᚋgraphqlᚐPeer(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPeer2ᚖbackendᚋgraphqlᚐPeer(ctx context.Context, sel ast.SelectionSet, v *Peer) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._Peer(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPublicKey2ᚕᚖbackendᚋgraphqlᚐPublicKeyᚄ(ctx context.Context, sel ast.SelectionSet, v []*PublicKey) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPublicKey2ᚖbackendᚋgraphqlᚐPublicKey(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPublicKey2ᚖbackendᚋgraphqlᚐPublicKey(ctx context.Context, sel ast.SelectionSet, v *PublicKey) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._PublicKey(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {

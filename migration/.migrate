@@ -3,15 +3,15 @@
   "migrations": [
     {
       "title": "1647885640841-create_user.js",
-      "timestamp": 1648234766891
+      "timestamp": 1648401333028
     },
     {
       "title": "1648058845627-create_peer.js",
-      "timestamp": 1648234766898
+      "timestamp": 1648401333531
     },
     {
       "title": "1648143668505-initialize_keys.js",
-      "timestamp": 1648234766941
+      "timestamp": 1648401333674
     }
   ]
 }

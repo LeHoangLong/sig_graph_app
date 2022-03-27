@@ -32,7 +32,6 @@ func MakeSmartContractDriverHL(
 		panic(fmt.Sprintf("failed to initialize gateway network %s", err.Error()))
 	}
 	contract := network.GetContractWithName(string(iContractName), "MaterialContract")
-	fmt.Println("contract != nil ", contract != nil)
 
 	driver := SmartContractDriverHL{
 		contract,

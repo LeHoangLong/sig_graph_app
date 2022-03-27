@@ -6,10 +6,8 @@ import (
 	"crypto/rsa"
 	"crypto/sha512"
 	"crypto/x509"
-	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 )
 
 type PublicKey string
@@ -45,7 +43,6 @@ func (s GraphContractSignature) CreateNodeSignature(
 	iData interface{},
 ) (string, error) {
 
-	fmt.Println("s.privateKey: ", s.privateKey)
 	block, _ := pem.Decode([]byte(s.privateKey))
 	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 
@@ -66,10 +63,7 @@ func (s GraphContractSignature) CreateNodeSignature(
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("newNode: %+v\n", newNode)
-	fmt.Println("json: ", string(json))
 	hash := sha512.Sum512(json)
-	fmt.Println("hash: ", hex.EncodeToString(hash[:]))
 	rng := rand.Reader
 	signature, err := rsa.SignPKCS1v15(rng, privateKey, crypto.SHA512, hash[:])
 

@@ -4,15 +4,12 @@ package graphql
 // will be copied through when generating and any unknown code will be moved to the end.
 
 import (
-	"backend/internal/models"
 	"context"
 	"fmt"
-	"time"
 )
 
 func (r *mutationResolver) CreateMaterial(ctx context.Context, iName string, iUnit string, iQuantity string) (*Material, error) {
-	fmt.Println("Creating material")
-	material, err := r.MaterialContractController.CreateMaterial(
+	material, err := r.MaterialContractController.CreateMaterialForCurrentUser(
 		ctx,
 		iName,
 		iUnit,
@@ -29,7 +26,7 @@ func (r *mutationResolver) CreateMaterial(ctx context.Context, iName string, iUn
 }
 
 func (r *queryResolver) Material(ctx context.Context, id string) (*Material, error) {
-	material, err := r.MaterialContractController.GetMaterialById(id)
+	material, err := r.MaterialContractController.GetMaterialById(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +36,7 @@ func (r *queryResolver) Material(ctx context.Context, id string) (*Material, err
 }
 
 func (r *queryResolver) Materials(ctx context.Context) ([]*Material, error) {
-	materials, err := r.MaterialContractController.ListMaterials(ctx)
+	materials, err := r.MaterialContractController.ListMaterialsOfCurrentUser(ctx)
 	if err != nil {
 		return []*Material{}, err
 	}
@@ -50,6 +47,20 @@ func (r *queryResolver) Materials(ctx context.Context) ([]*Material, error) {
 		ret = append(ret, &parsedMaterial)
 	}
 
+	return ret, nil
+}
+
+func (r *queryResolver) Peers(iCtx context.Context) ([]*Peer, error) {
+	peers, err := r.PeersController.ListPeers(iCtx)
+	if err != nil {
+		return []*Peer{}, err
+	}
+
+	ret := make([]*Peer, len(peers))
+	for i, peer := range peers {
+		parsedPeer := ParsePeer(peer)
+		ret[i] = &parsedPeer
+	}
 	return ret, nil
 }
 
@@ -68,12 +79,3 @@ type queryResolver struct{ *Resolver }
 //  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
 //    it when you're done.
 //  - You have helper methods in this file. Move them out to keep these resolver files clean.
-func ParseMaterial(iMaterial models.Material) Material {
-	return Material{
-		ID:          iMaterial.Id,
-		Name:        iMaterial.Name,
-		Unit:        iMaterial.Unit,
-		Quantity:    iMaterial.Quantity.String(),
-		CreatedTime: time.Time(iMaterial.CreatedTime),
-	}
-}

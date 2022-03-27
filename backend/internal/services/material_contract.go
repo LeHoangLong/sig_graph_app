@@ -80,6 +80,7 @@ func (c MaterialContract) CreateMaterial(
 		iQuantity,
 		iUnit,
 		createdTime,
+		string(c.publicKey),
 	)
 	return newMaterial, err
 }
@@ -107,5 +108,6 @@ func (c MaterialContract) GetMaterialById(
 		materialSc.Quantity,
 		materialSc.Unit,
 		materialSc.CreatedTime,
+		string(c.publicKey),
 	), nil
 }

@@ -43,7 +43,7 @@ module.exports.up = async function (next) {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "material" (
         id TEXT PRIMARY KEY,
-        key_id INTEGER REFERENCES "public_key"(id) ON DELETE CASCADE ON UPDATE CASCADE,
+        public_key_id INTEGER REFERENCES "public_key"(id) ON DELETE CASCADE ON UPDATE CASCADE,
         name TEXT NOT NULL,
         quantity DECIMAL NOT NULL,
         unit TEXT NOT NULL,
