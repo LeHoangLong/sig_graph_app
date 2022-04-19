@@ -58,7 +58,10 @@ func (r *queryResolver) Peers(ctx context.Context) ([]*Peer, error) {
 
 	ret := make([]*Peer, len(peers))
 	for i, peer := range peers {
-		parsedPeer := ParsePeer(peer)
+		parsedPeer, err := ParsePeer(peer)
+		if err != nil {
+			return []*Peer{}, err
+		}
 		ret[i] = &parsedPeer
 	}
 	return ret, nil

@@ -10,7 +10,7 @@ services:
             - ./db:/var/lib/postgresql/data
         network_mode: host
 
-    backend:
+    peer_0:
         image: application_backend
         volumes:
             - ./backend:/root/workspace

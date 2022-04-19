@@ -41,13 +41,62 @@ module.exports.up = async function (next) {
     `)
 
     await client.query(`
-      CREATE TABLE IF NOT EXISTS "material" (
-        id TEXT PRIMARY KEY,
+      CREATE TABLE IF NOT EXISTS "node" (
+        id SERIAL PRIMARY KEY,
+        node_id TEXT NOT NULL,
         public_key_id INTEGER REFERENCES "public_key"(id) ON DELETE CASCADE ON UPDATE CASCADE,
+        is_finalized BOOLEAN NOT NULL,
+        previous_node_hashed_ids TEXT[] NOT NULL,
+        next_node_hashed_ids TEXT[] NOT NULL,
+        created_time TIMESTAMPTZ NOT NULL,
+        signature BYTEA NOT NULL
+      )
+    `)
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "material" (
+        node_id INTEGER PRIMARY KEY REFERENCES "node"(id),
         name TEXT NOT NULL,
         quantity DECIMAL NOT NULL,
-        unit TEXT NOT NULL,
-        created_time TIMESTAMPTZ DEFAULT NOW()
+        unit TEXT NOT NULL
+      )
+    `)
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "supported_peer_protocol" (
+        id SERIAL PRIMARY KEY,
+        protocol TEXT NOT NULL UNIQUE,
+        major_version INTEGER NOT NULL CHECK (major_version >= 0),
+        minor_version INTEGER NOT NULL CHECK (minor_version >= 0)
+      )
+    `)
+    
+    await client.query(`
+      CREATE UNIQUE INDEX protocol_index ON "supported_peer_protocol" (
+        protocol,
+        major_version,
+        minor_version
+      )
+    `)
+
+    await client.query(`
+      INSERT INTO "supported_peer_protocol" (
+        protocol,
+        major_version,
+        minor_version
+      ) VALUES (
+        'graphql',
+        0,
+        0
+      )
+    `)
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "peer_endpoint" (
+          id SERIAL PRIMARY KEY,
+          peer_id INTEGER REFERENCES "peer"(id) ON UPDATE CASCADE ON DELETE CASCADE NOT NULL,
+          url TEXT NOT NULL CHECK(LENGTH(url) > 0),
+          protocol_id INTEGER REFERENCES "supported_peer_protocol"(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT NULL
       )
     `)
     await client.query('COMMIT')
@@ -65,7 +114,16 @@ module.exports.down = async function (next) {
   try {
     await client.query('BEGIN')
     await client.query(`
+      DROP TABLE IF EXISTS "peer_endpoint"
+    `)
+    await client.query(`
+      DROP TABLE IF EXISTS "supported_peer_protocol"
+    `)
+    await client.query(`
       DROP TABLE IF EXISTS "material"
+    `)
+    await client.query(`
+      DROP TABLE IF EXISTS "node"
     `)
     await client.query(`
       DROP TABLE IF EXISTS "user_key"

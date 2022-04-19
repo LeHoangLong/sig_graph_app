@@ -3,6 +3,7 @@ package repositories
 import (
 	"backend/internal/models"
 	"database/sql"
+	"fmt"
 )
 
 type UserKeyRepositorySql struct {
@@ -57,7 +58,7 @@ func (r UserKeyRepositorySql) FetchUserKeyPairByUser(iUserId int) ([]models.User
 		ret = append(ret, models.MakeUserKeyPair(
 			id,
 			models.MakePublicKey(
-				publicKeyId,
+				&publicKeyId,
 				publicKey,
 			),
 			privateKey,
@@ -66,4 +67,56 @@ func (r UserKeyRepositorySql) FetchUserKeyPairByUser(iUserId int) ([]models.User
 	}
 
 	return ret, nil
+}
+
+func (r UserKeyRepositorySql) FetchDefaultUserKeyPair(iUserId int) (models.UserKeyPair, error) {
+	response, err := r.db.Query(`
+		SELECT 
+			user_key.id, 
+			public_key.id,
+			public_key.value, 
+			user_key.private_key, 
+			user_key.is_default
+		FROM "public_key" public_key
+		INNER JOIN (
+			SELECT id, public_key_id, is_default, private_key
+			FROM "user_key"
+			WHERE owner_id = $1 AND is_default = TRUE
+		) user_key
+		ON public_key.id = user_key.public_key_id
+	`, iUserId)
+
+	if err != nil {
+		return models.UserKeyPair{}, err
+	}
+
+	if !response.Next() {
+		return models.UserKeyPair{}, fmt.Errorf("no default key found")
+	}
+
+	var id, publicKeyId int
+	var publicKey, privateKey string
+	var isDefault bool
+
+	err = response.Scan(
+		&id,
+		&publicKeyId,
+		&publicKey,
+		&privateKey,
+		&isDefault,
+	)
+
+	if err != nil {
+		return models.UserKeyPair{}, err
+	}
+
+	return models.MakeUserKeyPair(
+		id,
+		models.MakePublicKey(
+			&publicKeyId,
+			publicKey,
+		),
+		privateKey,
+		isDefault,
+	), nil
 }

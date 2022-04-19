@@ -52,6 +52,7 @@ module.exports.up = async function (next) {
         ) RETURNING id
       `, [userResponse.rows[0].id, peer.alias ?? ('peer_' + index)])
 
+      const peerId = peerResponse.rows[0].id
       for (const key of peer.public_keys) {
         const publicKeyFile = fs.readFileSync(key, 'utf-8')
         const publicKeyResponse = await client.query(`
@@ -70,7 +71,31 @@ module.exports.up = async function (next) {
             $1,
             $2
           )
-        `, [peerResponse.rows[0].id, publicKeyResponse.rows[0].id])
+        `, [peerId, publicKeyResponse.rows[0].id])
+      }
+
+      for (const endpoint of peer.enpoints) {
+        const protocolResponse = await client.query(`
+          SELECT * 
+          FROM "supported_peer_protocol" 
+          WHERE protocol = $1 AND major_version = $2 AND minor_version = $3
+        `, [endpoint.protocol.name, endpoint.protocol.major, endpoint.protocol.minor])
+
+        if (protocolResponse.rows.length == 0) {
+          throw "Protocol " + endpoint.protocol.name + '@'  + endpoint.protocol.major + '.' + endpoint.protocol.minor + ' is not supported'
+        }
+        const protocolId = protocolResponse.rows[0].id
+        await client.query(`
+          INSERT INTO "peer_endpoint" (
+            peer_id,
+            url,
+            protocol_id
+          ) VALUES (
+            $1,
+            $2,
+            $3
+          )
+        `, [peerId, endpoint.url, protocolId])
       }
     }
 

@@ -31,3 +31,11 @@ func (t *CustomTime) UnmarshalJSON(iData []byte) error {
 	*t = CustomTime(parsed)
 	return nil
 }
+
+func NewCustomTimeFromString(iData string) (CustomTime, error) {
+	parsed, err := time.Parse(time.RFC3339, iData)
+	if err != nil {
+		return CustomTime{}, err
+	}
+	return CustomTime(parsed), nil
+}

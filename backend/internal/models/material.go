@@ -1,28 +1,23 @@
 package models
 
+/// Id may be nil if it is obtained from blockchain
 type Material struct {
-	Id             string        `json:"ID"`
-	Name           string        `json:"Name"`
-	Quantity       CustomDecimal `json:"Quantity"`
-	Unit           string        `json:"Unit"`
-	CreatedTime    CustomTime    `json:"CreatedTime"`
-	OwnerPublicKey string        `json:"OwnerPublicKey"`
+	Node
+	Name     string        `json:"Name"`
+	Quantity CustomDecimal `json:"Quantity"`
+	Unit     string        `json:"Unit"`
 }
 
 func NewMaterial(
-	iId string,
+	iNode Node,
 	iName string,
 	iQuantity CustomDecimal,
 	iUnit string,
-	iCreatedTime CustomTime,
-	iOwnerPublicKey string,
 ) Material {
 	return Material{
-		iId,
-		iName,
-		iQuantity,
-		iUnit,
-		iCreatedTime,
-		iOwnerPublicKey,
+		Node:     iNode,
+		Name:     iName,
+		Quantity: iQuantity,
+		Unit:     iUnit,
 	}
 }

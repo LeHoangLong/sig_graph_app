@@ -7,14 +7,17 @@ import (
 	"backend/internal/drivers"
 	"backend/internal/repositories"
 	"backend/internal/services"
+	graph_id_service "backend/internal/services/graph_id"
+	material_contract_service "backend/internal/services/material_contract"
 	"database/sql"
 	"fmt"
+	"os"
+
 	"github.com/google/wire"
 	"github.com/hyperledger/fabric-sdk-go/pkg/client/msp"
 	"github.com/hyperledger/fabric-sdk-go/pkg/gateway"
 	_ "github.com/lib/pq"
 	"gopkg.in/yaml.v3"
-	"os"
 )
 
 type Config struct {
@@ -32,6 +35,7 @@ type Config struct {
 	DbHost           string `yaml:"DbHost"`
 	DbPort           string `yaml:"DbPort"`
 	DbSslmode        string `yaml:"DbSslmode"`
+	GraphIdPrefix    string `yaml:"GraphIdPrefix"`
 }
 
 func InitConfig() Config {
@@ -109,31 +113,6 @@ func InitializeHLGatewayInitializer() drivers.HLGatewayInitializer {
 	return drivers.HLGatewayInitializer{}
 }
 
-func InitializePublicKey() services.PublicKey {
-	config := InitConfig()
-	data, err := os.ReadFile(config.PublicKeyPath)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	return services.PublicKey(string(data))
-}
-
-func InitializePrivateKey() services.PrivateKey {
-	config := InitConfig()
-	data, err := os.ReadFile(config.PrivateKeyPath)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	return services.PrivateKey(string(data))
-}
-
-func InitializeGraphContractSignature() services.GraphContractSignature {
-	wire.Build(services.MakeGraphContractSignature, InitializePublicKey, InitializePrivateKey)
-	return services.GraphContractSignature{}
-}
-
 func InitializeChannelName() drivers.ChannelName {
 	config := InitConfig()
 	return drivers.ChannelName(config.ChannelName)
@@ -144,7 +123,7 @@ func InitializeContractName() drivers.ContractName {
 	return drivers.ContractName(config.ContractName)
 }
 
-var Set = wire.NewSet(
+var SmartContractDriverSet = wire.NewSet(
 	drivers.MakeSmartContractDriverHL,
 	wire.Bind(new(drivers.SmartContractDriverI), new(drivers.SmartContractDriverHL)),
 	InitializeHLGatewayInitializer,
@@ -173,14 +152,9 @@ func InitializeSqlDriver() *sql.DB {
 	return db
 }
 
-var MaterialRepositorySet = wire.NewSet(
-	InitializeMaterialRepositorySql,
-	wire.Bind(new(repositories.MaterialRepositoryI), new(repositories.MaterialRepositorySql)),
-)
-
-func InitializeMaterialRepositorySql() repositories.MaterialRepositorySql {
-	wire.Build(repositories.MakeMaterialRepositorySql, InitializeSqlDriver)
-	return repositories.MaterialRepositorySql{}
+func InitializeMaterialRepositorySqlFactory() repositories.MaterialRepositoryFactory {
+	wire.Build(repositories.MakeMaterialRepositoryFactory, InitializeSqlDriver)
+	return repositories.MaterialRepositoryFactory{}
 }
 
 func InitializePeerRepositorySql() repositories.PeerRepositorySql {
@@ -209,18 +183,32 @@ var UserKeySet = wire.NewSet(
 )
 
 /// Finished initializing repositories
+func InitializeIdGeneratorServiceUuidPrefix() graph_id_service.IdGeneratorServiceUuidPrefix {
+	config := InitConfig()
+	return graph_id_service.IdGeneratorServiceUuidPrefix(config.GraphIdPrefix)
+}
 
-func InitializeMaterialContract() services.MaterialContract {
-	wire.Build(services.MakeMaterialContract, Set, InitializeGraphContractSignature, InitializePublicKey)
-	return services.MaterialContract{}
+func InitializeIdGeneratorService() graph_id_service.IdGeneratorServiceUuid {
+	wire.Build(graph_id_service.MakeIdGeneratorServiceUuid, InitializeIdGeneratorServiceUuidPrefix)
+	return graph_id_service.IdGeneratorServiceUuid{}
+}
+
+var IdGeneratorServiceSet = wire.NewSet(
+	InitializeIdGeneratorService,
+	wire.Bind(new(graph_id_service.IdGeneratorServiceI), new(graph_id_service.IdGeneratorServiceUuid)),
+)
+
+func InitializeMaterialContractServiceFactory() material_contract_service.MaterialServiceFactory {
+	wire.Build(material_contract_service.MakeMaterialServiceFactory, SmartContractDriverSet, IdGeneratorServiceSet)
+	return material_contract_service.MaterialServiceFactory{}
 }
 
 func InitializeMaterialRepositoryService() services.MaterialRepositoryService {
-	wire.Build(services.MakeMaterialRepositoryService, MaterialRepositorySet, UserKeySet)
+	wire.Build(services.MakeMaterialRepositoryService, InitializeMaterialRepositorySqlFactory, UserKeySet)
 	return services.MaterialRepositoryService{}
 }
 
 func InitializeMaterialContractController() controllers.MaterialContractController {
-	wire.Build(controllers.MakeMaterialContractController, InitializeMaterialContract, InitializeMaterialRepositoryService)
+	wire.Build(controllers.MakeMaterialContractController, UserKeySet, InitializeMaterialContractServiceFactory, InitializeMaterialRepositoryService)
 	return controllers.MaterialContractController{}
 }

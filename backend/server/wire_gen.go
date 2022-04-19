@@ -10,6 +10,8 @@ import (
 	"backend/internal/drivers"
 	"backend/internal/repositories"
 	"backend/internal/services"
+	"backend/internal/services/graph_id"
+	"backend/internal/services/material_contract"
 	"database/sql"
 	"fmt"
 	"github.com/google/wire"
@@ -47,17 +49,10 @@ func InitializeHLGatewayInitializer() drivers.HLGatewayInitializer {
 	return hlGatewayInitializer
 }
 
-func InitializeGraphContractSignature() services.GraphContractSignature {
-	publicKey := InitializePublicKey()
-	privateKey := InitializePrivateKey()
-	graphContractSignature := services.MakeGraphContractSignature(publicKey, privateKey)
-	return graphContractSignature
-}
-
-func InitializeMaterialRepositorySql() repositories.MaterialRepositorySql {
+func InitializeMaterialRepositorySqlFactory() repositories.MaterialRepositoryFactory {
 	sqlDB := InitializeSqlDriver()
-	materialRepositorySql := repositories.MakeMaterialRepositorySql(sqlDB)
-	return materialRepositorySql
+	materialRepositoryFactory := repositories.MakeMaterialRepositoryFactory(sqlDB)
+	return materialRepositoryFactory
 }
 
 func InitializePeerRepositorySql() repositories.PeerRepositorySql {
@@ -78,28 +73,34 @@ func InitializeUserKeyRepositorySql() repositories.UserKeyRepositorySql {
 	return userKeyRepositorySql
 }
 
-func InitializeMaterialContract() services.MaterialContract {
+func InitializeIdGeneratorService() graph_id_service.IdGeneratorServiceUuid {
+	idGeneratorServiceUuidPrefix := InitializeIdGeneratorServiceUuidPrefix()
+	idGeneratorServiceUuid := graph_id_service.MakeIdGeneratorServiceUuid(idGeneratorServiceUuidPrefix)
+	return idGeneratorServiceUuid
+}
+
+func InitializeMaterialContractServiceFactory() material_contract_service.MaterialServiceFactory {
 	hlGatewayInitializer := InitializeHLGatewayInitializer()
 	channelName := InitializeChannelName()
 	contractName := InitializeContractName()
 	smartContractDriverHL := drivers.MakeSmartContractDriverHL(hlGatewayInitializer, channelName, contractName)
-	graphContractSignature := InitializeGraphContractSignature()
-	publicKey := InitializePublicKey()
-	materialContract := services.MakeMaterialContract(smartContractDriverHL, graphContractSignature, publicKey)
-	return materialContract
+	idGeneratorServiceUuid := InitializeIdGeneratorService()
+	materialServiceFactory := material_contract_service.MakeMaterialServiceFactory(smartContractDriverHL, idGeneratorServiceUuid)
+	return materialServiceFactory
 }
 
 func InitializeMaterialRepositoryService() services.MaterialRepositoryService {
-	materialRepositorySql := InitializeMaterialRepositorySql()
+	materialRepositoryFactory := InitializeMaterialRepositorySqlFactory()
 	userKeyRepositorySql := InitializeUserKeyRepositorySql()
-	materialRepositoryService := services.MakeMaterialRepositoryService(materialRepositorySql, userKeyRepositorySql)
+	materialRepositoryService := services.MakeMaterialRepositoryService(materialRepositoryFactory, userKeyRepositorySql)
 	return materialRepositoryService
 }
 
 func InitializeMaterialContractController() controllers.MaterialContractController {
-	materialContract := InitializeMaterialContract()
+	materialServiceFactory := InitializeMaterialContractServiceFactory()
 	materialRepositoryService := InitializeMaterialRepositoryService()
-	materialContractController := controllers.MakeMaterialContractController(materialContract, materialRepositoryService)
+	userKeyRepositorySql := InitializeUserKeyRepositorySql()
+	materialContractController := controllers.MakeMaterialContractController(materialServiceFactory, materialRepositoryService, userKeyRepositorySql)
 	return materialContractController
 }
 
@@ -120,6 +121,7 @@ type Config struct {
 	DbHost           string `yaml:"DbHost"`
 	DbPort           string `yaml:"DbPort"`
 	DbSslmode        string `yaml:"DbSslmode"`
+	GraphIdPrefix    string `yaml:"GraphIdPrefix"`
 }
 
 func InitConfig() Config {
@@ -177,26 +179,6 @@ func NewMspId() drivers.MspId {
 	return drivers.MspId(config.OrgMspId)
 }
 
-func InitializePublicKey() services.PublicKey {
-	config := InitConfig()
-	data, err := os.ReadFile(config.PublicKeyPath)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	return services.PublicKey(string(data))
-}
-
-func InitializePrivateKey() services.PrivateKey {
-	config := InitConfig()
-	data, err := os.ReadFile(config.PrivateKeyPath)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	return services.PrivateKey(string(data))
-}
-
 func InitializeChannelName() drivers.ChannelName {
 	config := InitConfig()
 	return drivers.ChannelName(config.ChannelName)
@@ -207,7 +189,7 @@ func InitializeContractName() drivers.ContractName {
 	return drivers.ContractName(config.ContractName)
 }
 
-var Set = wire.NewSet(drivers.MakeSmartContractDriverHL, wire.Bind(new(drivers.SmartContractDriverI), new(drivers.SmartContractDriverHL)), InitializeHLGatewayInitializer,
+var SmartContractDriverSet = wire.NewSet(drivers.MakeSmartContractDriverHL, wire.Bind(new(drivers.SmartContractDriverI), new(drivers.SmartContractDriverHL)), InitializeHLGatewayInitializer,
 	InitializeChannelName,
 	InitializeContractName,
 )
@@ -233,14 +215,20 @@ func InitializeSqlDriver() *sql.DB {
 	return db
 }
 
-var MaterialRepositorySet = wire.NewSet(
-	InitializeMaterialRepositorySql, wire.Bind(new(repositories.MaterialRepositoryI), new(repositories.MaterialRepositorySql)),
-)
-
 var PeerSet = wire.NewSet(
 	InitializePeerRepositorySql, wire.Bind(new(repositories.PeerRepositoryI), new(repositories.PeerRepositorySql)),
 )
 
 var UserKeySet = wire.NewSet(
 	InitializeUserKeyRepositorySql, wire.Bind(new(repositories.UserKeyRepositoryI), new(repositories.UserKeyRepositorySql)),
+)
+
+/// Finished initializing repositories
+func InitializeIdGeneratorServiceUuidPrefix() graph_id_service.IdGeneratorServiceUuidPrefix {
+	config := InitConfig()
+	return graph_id_service.IdGeneratorServiceUuidPrefix(config.GraphIdPrefix)
+}
+
+var IdGeneratorServiceSet = wire.NewSet(
+	InitializeIdGeneratorService, wire.Bind(new(graph_id_service.IdGeneratorServiceI), new(graph_id_service.IdGeneratorServiceUuid)),
 )

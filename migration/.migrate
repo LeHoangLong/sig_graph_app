@@ -1,17 +1,21 @@
 {
-  "lastRun": "1648143668505-initialize_keys.js",
+  "lastRun": "1649183360570-create_pending_receive_material_request.js",
   "migrations": [
     {
       "title": "1647885640841-create_user.js",
-      "timestamp": 1648401333028
+      "timestamp": 1649960768631
     },
     {
       "title": "1648058845627-create_peer.js",
-      "timestamp": 1648401333531
+      "timestamp": 1650380466962
     },
     {
       "title": "1648143668505-initialize_keys.js",
-      "timestamp": 1648401333674
+      "timestamp": 1650380467050
+    },
+    {
+      "title": "1649183360570-create_pending_receive_material_request.js",
+      "timestamp": 1650380467631
     }
   ]
 }

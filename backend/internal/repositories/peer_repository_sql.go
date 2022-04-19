@@ -49,7 +49,7 @@ func (r PeerRepositorySql) FetchPeers(iUserId int) ([]models.Peer, error) {
 			&publicKeyValue,
 		)
 
-		publicKey := models.MakePublicKey(publicKeyId, publicKeyValue)
+		publicKey := models.MakePublicKey(&publicKeyId, publicKeyValue)
 
 		if peer, ok := peerMap[peerId]; ok {
 			peer.PublicKey = append(peer.PublicKey, publicKey)

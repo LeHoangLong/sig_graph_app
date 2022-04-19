@@ -1,0 +1,45 @@
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+
+package grpc;
+
+option go_package = "./grpc";
+
+service MaterialService {
+    rpc SendReceiveMaterialRequest (ReceiveMaterialRequestRequest) returns (ReceiveMaterialRequestResponse) {}
+    rpc SendReceiveMaterialResponse (ReceiveMaterialResponseRequest) returns (ReceiveMaterialResponseResponse) {}
+}
+
+message Node {
+    string id = 1;  
+    repeated string children_node_ids = 3;
+    repeated string parent_node_ids = 4;
+}
+
+message SignatureOption {
+    string node_id = 1;
+    string signature = 2;
+}
+
+message ReceiveMaterialRequestRequest {
+    string main_node_id = 2;
+    google.protobuf.Timestamp transfer_time = 3;  
+    repeated SignatureOption sender_signature_options = 4; /// multiple signatures as backup
+    map<string, Node> nodes = 5; /// key is node id
+}
+
+message ReceiveMaterialRequestResponse {
+    string response_id = 1;
+    bool request_acknowledged = 2;
+}
+
+message ReceiveMaterialResponseRequest {
+    string response_id = 1;
+    bool is_request_accepted = 2;
+    string message = 3;
+    string new_node_id = 4;
+}
+
+message ReceiveMaterialResponseResponse {
+
+}

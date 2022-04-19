@@ -3,74 +3,72 @@ package services
 import (
 	"backend/internal/models"
 	"backend/internal/repositories"
+	"context"
 	"fmt"
 )
 
 type MaterialRepositoryService struct {
-	repository        repositories.MaterialRepositoryI
+	repositoryFactory repositories.MaterialRepositoryFactory
 	userKeyRepository repositories.UserKeyRepositoryI
 }
 
 func MakeMaterialRepositoryService(
-	iRepository repositories.MaterialRepositoryI,
+	iRepositoryFactory repositories.MaterialRepositoryFactory,
 	iUserKeyRepository repositories.UserKeyRepositoryI,
 ) MaterialRepositoryService {
 	return MaterialRepositoryService{
-		repository:        iRepository,
+		repositoryFactory: iRepositoryFactory,
 		userKeyRepository: iUserKeyRepository,
 	}
 }
 
-func (s MaterialRepositoryService) AddOrUpdateMaterialToUser(
-	iUserId int,
+func (s MaterialRepositoryService) AddMaterialToUser(
+	iContext context.Context,
+	iUserKey models.PublicKey,
 	iMaterial models.Material,
 ) (models.Material, error) {
-	keys, err := s.userKeyRepository.FetchUserKeyPairByUser(iUserId)
-	if err != nil {
-		return models.Material{}, err
+	if iUserKey.Id == nil {
+		return models.Material{}, fmt.Errorf("iUserKey is not yet saved to db")
 	}
-
-	if len(keys) == 0 {
-		return models.Material{}, fmt.Errorf("no public key created yet")
-	}
-
-	defaultKey := keys[0]
-	for _, key := range keys {
-		if key.IsDefault {
-			defaultKey = key
-			break
-		}
-	}
-
-	err = s.repository.AddOrUpdateMaterial(
-		defaultKey.PublicKey.Id,
-		iMaterial,
-	)
+	iMaterial.OwnerPublicKey = iUserKey
+	var material models.Material
+	var err error
+	err = s.repositoryFactory.GetRepository(iContext, func(iRepository repositories.MaterialRepositoryI) error {
+		material, err = iRepository.AddMaterial(
+			iMaterial,
+		)
+		return err
+	})
 
 	if err != nil {
 		return models.Material{}, err
 	}
 
-	return iMaterial, nil
+	return material, nil
 }
 
 func (s MaterialRepositoryService) FetchMaterialsOfUser(
-	iUserId int,
+	iContext context.Context,
+	iUserKeys []models.UserKeyPair,
+	iMinId int,
+	iLimit int,
 ) ([]models.Material, error) {
+	var err error
+	ret := []models.Material{}
+	err = s.repositoryFactory.GetRepository(iContext, func(iRepository repositories.MaterialRepositoryI) error {
+		for _, key := range iUserKeys {
+			materials, err := iRepository.FetchMaterialsByOwner(key.PublicKey, iMinId, iLimit)
+			if err != nil {
+				return err
+			}
 
-	keys, err := s.userKeyRepository.FetchUserKeyPairByUser(iUserId)
+			ret = append(ret, materials...)
+		}
+		return nil
+	})
+
 	if err != nil {
 		return []models.Material{}, err
-	}
-
-	ret := []models.Material{}
-	for _, key := range keys {
-		materials, err := s.repository.FetchMaterials(key.PublicKey.Id)
-		if err != nil {
-			return []models.Material{}, err
-		}
-
-		ret = append(ret, materials...)
 	}
 
 	return ret, nil
@@ -87,7 +85,7 @@ func (s MaterialRepositoryService) DoesMaterialBelongToUser(
 	}
 
 	for _, key := range keys {
-		if key.PublicKey.Value == iMaterial.OwnerPublicKey {
+		if key.PublicKey.Value == iMaterial.OwnerPublicKey.Value {
 			return true, nil
 		}
 	}
