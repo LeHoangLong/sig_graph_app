@@ -41,6 +41,20 @@ module.exports.up = async function (next) {
     `)
 
     await client.query(`
+        CREATE TABLE IF NOT EXISTS "node_type"(
+          type TEXT PRIMARY KEY
+        )
+    `)
+
+    await client.query(`
+          INSERT INTO "node_type" (
+            type
+          ) VALUES (
+            'material'
+          )
+    `)
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS "node" (
         id SERIAL PRIMARY KEY,
         node_id TEXT NOT NULL,
@@ -49,8 +63,17 @@ module.exports.up = async function (next) {
         previous_node_hashed_ids TEXT[] NOT NULL,
         next_node_hashed_ids TEXT[] NOT NULL,
         created_time TIMESTAMPTZ NOT NULL,
-        signature BYTEA NOT NULL
+        signature BYTEA NOT NULL,
+        type TEXT REFERENCES "node_type"(type) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL
       )
+    `)
+
+    await client.query(`
+        CREATE TABLE IF NOT EXISTS "node_edge"(
+          id SERIAL PRIMARY KEY,
+          owner_node_id INTEGER REFERENCES "node"(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL,
+          referenced_node_id INTEGER REFERENCES "node"(id) ON DELETE CASCADE ON UPDATE CASCADE
+        )
     `)
 
     await client.query(`
@@ -122,9 +145,11 @@ module.exports.down = async function (next) {
     await client.query(`
       DROP TABLE IF EXISTS "material"
     `)
+    await client.query(`DROP TABLE IF EXISTS "node_edge"`)
     await client.query(`
       DROP TABLE IF EXISTS "node"
     `)
+    await client.query(`DROP TABLE IF EXISTS "node_type"`)
     await client.query(`
       DROP TABLE IF EXISTS "user_key"
     `)

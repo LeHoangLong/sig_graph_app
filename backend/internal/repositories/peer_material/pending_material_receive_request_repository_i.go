@@ -8,8 +8,8 @@ import (
 type PendingMaterialReceiveRequestRepositoryI interface {
 	createPendingReceiveMaterialRequest(
 		iContext context.Context,
-		iNodeId string,
-		iInfo models.PendingMaterialInfo,
+		iNodeIds []string,
+		iTransferTime models.CustomTime,
 		iOptions []models.SignatureOption,
 	) (models.PendingMaterialReceiveRequest, error)
 }

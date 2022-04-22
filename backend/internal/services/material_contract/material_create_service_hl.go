@@ -82,6 +82,8 @@ func (c MaterialCreateService) CreateMaterial(
 		false,
 		map[string]bool{},
 		map[string]bool{},
+		map[string]bool{},
+		map[string]bool{},
 		iOwnerKey.PublicKey,
 		createdTime,
 		signature,

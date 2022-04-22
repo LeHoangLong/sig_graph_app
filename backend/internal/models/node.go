@@ -5,10 +5,12 @@ type Node struct {
 	NodeId                string          `json:"NodeId"`
 	IsFinalized           bool            `json:"IsFinalized"`
 	PreviousNodeHashedIds map[string]bool `json:"PreviousNodeHashedIds"` /// used as a set
-	NextNodeHashedIds     map[string]bool `json:"NextodeHashedIds"`      /// used as a set
-	OwnerPublicKey        PublicKey       `json:"OwnerPublicKey"`
-	CreatedTime           CustomTime      `json:"CreatedTime"`
-	Signature             string          `json:"Signature"`
+	NextNodeHashedIds     map[string]bool `json:"NextNodeHashedIds"`
+	ChildrenIds           map[int]bool
+	ParentIds             map[int]bool
+	OwnerPublicKey        PublicKey  `json:"OwnerPublicKey"`
+	CreatedTime           CustomTime `json:"CreatedTime"`
+	Signature             string     `json:"Signature"`
 }
 
 func MakeNode(
@@ -17,6 +19,8 @@ func MakeNode(
 	iIsFinalized bool,
 	iPreviousNodeHashedIds map[string]bool,
 	iNextNodeHashedIds map[string]bool,
+	iParentIds map[int]bool,
+	iChildrenIds map[int]bool,
 	iOwnerPublicKey PublicKey,
 	iCreatedTime CustomTime,
 	iSignature string,
@@ -27,6 +31,8 @@ func MakeNode(
 		IsFinalized:           iIsFinalized,
 		PreviousNodeHashedIds: iPreviousNodeHashedIds,
 		NextNodeHashedIds:     iNextNodeHashedIds,
+		ParentIds:             iParentIds,
+		ChildrenIds:           iChildrenIds,
 		OwnerPublicKey:        iOwnerPublicKey,
 		CreatedTime:           iCreatedTime,
 		Signature:             iSignature,
