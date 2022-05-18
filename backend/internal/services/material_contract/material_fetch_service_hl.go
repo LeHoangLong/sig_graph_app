@@ -41,14 +41,15 @@ func (s MaterialFetchServiceHl) GetMaterialById(
 		materialSc.IsFinalized,
 		materialSc.PreviousNodeHashedIds,
 		materialSc.NextNodeHashedIds,
-		map[string]bool{},
-		map[string]bool{},
+		map[int]bool{},
+		map[int]bool{},
 		models.MakePublicKey(
 			nil,
 			materialSc.OwnerPublicKey,
 		),
 		materialSc.CreatedTime,
 		materialSc.Signature,
+		"material",
 	)
 
 	return models.NewMaterial(

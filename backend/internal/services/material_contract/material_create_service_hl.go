@@ -82,11 +82,12 @@ func (c MaterialCreateService) CreateMaterial(
 		false,
 		map[string]bool{},
 		map[string]bool{},
-		map[string]bool{},
-		map[string]bool{},
+		map[int]bool{},
+		map[int]bool{},
 		iOwnerKey.PublicKey,
 		createdTime,
 		signature,
+		"material",
 	)
 
 	newMaterial := models.NewMaterial(

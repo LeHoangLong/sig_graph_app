@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type NodeRepositorySql struct {
@@ -29,6 +31,7 @@ func (r NodeRepositorySql) CreateNode(iNode models.Node) (models.Node, error) {
 		iNode.IsFinalized,
 		time.Time(iNode.CreatedTime),
 		iNode.Signature,
+		iNode.Type,
 	}
 	previousNodeArrayStrings := []string{}
 	nextNodeArrayStrings := []string{}
@@ -54,6 +57,7 @@ func (r NodeRepositorySql) CreateNode(iNode models.Node) (models.Node, error) {
 			is_finalized,
 			created_time,
 			signature,
+			type,
 			previous_node_hashed_ids,
 			next_node_hashed_ids
 		) VALUES (
@@ -62,6 +66,7 @@ func (r NodeRepositorySql) CreateNode(iNode models.Node) (models.Node, error) {
 			$3,
 			$4,
 			$5,
+			$6,
 	`
 
 	statement += "ARRAY[" + strings.Join(previousNodeArrayStrings, ",") + "]::TEXT[],"
@@ -82,32 +87,74 @@ func (r NodeRepositorySql) CreateNode(iNode models.Node) (models.Node, error) {
 	result.Scan(&id)
 	result.Close()
 
-	statement = `
-		INSERT INTO "node_edge" (
-			owner_node_id,
-			referenced_node_id
-		) VALUES (
-	`
-	argsStr := []string{}
-	args = []interface{}{}
-	thisHashId := r.hasher.HashId(iNode.NodeId)
-	for id, _ := range iNode.ParentIds {
-		argsStr = append(argsStr, fmt.Sprintf("$%d, $%d", count, count+1))
-		args = append(args, id, thisHashId)
-		count += 2
+	if len(iNode.ChildrenIds) > 0 || len(iNode.ParentIds) > 0 {
+		statement = `
+			INSERT INTO "node_edge" (
+				src_node_id,
+				dst_node_id
+			) VALUES (
+		`
+		argsStr := []string{}
+		args = []interface{}{}
+		for id, _ := range iNode.ParentIds {
+			argsStr = append(argsStr, fmt.Sprintf("$%d, $%d", count, count+1))
+			args = append(args, id, iNode.NodeId)
+			count += 2
+		}
+
+		for id, _ := range iNode.ChildrenIds {
+			argsStr = append(argsStr, fmt.Sprintf("$%d, $%d", count, count+1))
+			args = append(args, iNode.NodeId, id)
+			count += 2
+		}
+		statement += strings.Join(argsStr, "), (")
+		statement += ") ON CONFLICT (src_node_id, dst_node_id) DO NOTHING"
+		result, err = r.tx.Query(statement, args...)
+		if err != nil {
+			return models.Node{}, err
+		}
 	}
 
-	for id, _ := range iNode.ChildrenIds {
-
-		argsStr = append(argsStr, fmt.Sprintf("$%d, $%d", count, count+1))
-		args = append(args, id, thisHashId)
-		count += 2
-	}
-	statement += strings.Join(argsStr, "), (")
-	statement += ")"
-	result, err = r.tx.Query(statement, args...)
 	ret := iNode
 	ret.Id = &id
+	return ret, nil
+}
+
+func (r NodeRepositorySql) FetchChildrenIdOfNode(iId int) (map[int]bool, error) {
+	result, err := r.tx.Query(`
+		SELECT dst_node_id FROM "node_edge" WHERE src_node_id=$1
+	`, iId)
+
+	if err != nil {
+		return map[int]bool{}, nil
+	}
+
+	ret := map[int]bool{}
+	for result.Next() {
+		var childNodeId int
+		result.Scan(&childNodeId)
+		ret[childNodeId] = true
+	}
+
+	return ret, nil
+}
+
+func (r NodeRepositorySql) FetchParentIdOfNode(iId int) (map[int]bool, error) {
+	result, err := r.tx.Query(`
+		SELECT src_node_id FROM "node_edge" WHERE dst_node_id=$1
+	`, iId)
+
+	if err != nil {
+		return map[int]bool{}, nil
+	}
+
+	ret := map[int]bool{}
+	for result.Next() {
+		var childNodeId int
+		result.Scan(&childNodeId)
+		ret[childNodeId] = true
+	}
+
 	return ret, nil
 }
 
@@ -121,6 +168,7 @@ func (r NodeRepositorySql) FetchNodesById(iId []int) ([]models.Node, error) {
 			n.next_node_hashed_ids,
 			n.created_time,
 			n.signature,
+			n.type,
 			pk.id,
 			pk.value
 		FROM "node" n
@@ -132,7 +180,7 @@ func (r NodeRepositorySql) FetchNodesById(iId []int) ([]models.Node, error) {
 	count := 1
 
 	for _, id := range iId {
-		argsString = append(argsString, fmt.Sprintf("(id = $%d)", count))
+		argsString = append(argsString, fmt.Sprintf("(n.id = $%d)", count))
 		args = append(args, id)
 		count += 1
 	}
@@ -151,18 +199,16 @@ func (r NodeRepositorySql) FetchNodesById(iId []int) ([]models.Node, error) {
 		node := models.Node{}
 		var publicKeyId int
 		var publicKeyValue string
-		var nodeId, nodeNodeId int
-		var nodeIsFinalized bool
-		var 
 
 		result.Scan(
 			node.Id,
 			&node.NodeId,
 			&node.IsFinalized,
-			&node.PreviousNodeHashedIds,
-			&node.NextNodeHashedIds,
+			pq.Array(&node.PreviousNodeHashedIds),
+			pq.Array(&node.NextNodeHashedIds),
 			&node.CreatedTime,
 			&node.Signature,
+			&node.Type,
 			&publicKeyId,
 			&publicKeyValue,
 		)
@@ -172,6 +218,23 @@ func (r NodeRepositorySql) FetchNodesById(iId []int) ([]models.Node, error) {
 		}
 		ret = append(ret, node)
 	}
+
+	for idx, _ := range ret {
+		childrenIds, err := r.FetchChildrenIdOfNode(*ret[idx].Id)
+		if err != nil {
+			return []models.Node{}, err
+		}
+
+		parentIds, err := r.FetchChildrenIdOfNode(*ret[idx].Id)
+		if err != nil {
+			return []models.Node{}, err
+		}
+
+		ret[idx].ParentIds = parentIds
+		ret[idx].ChildrenIds = childrenIds
+	}
+
+	return ret, nil
 }
 
 func (r NodeRepositorySql) FetchNodesByOwnerKey(iOwnerKey models.PublicKey, iMinId int, iLimit int) ([]models.Node, error) {
@@ -183,7 +246,8 @@ func (r NodeRepositorySql) FetchNodesByOwnerKey(iOwnerKey models.PublicKey, iMin
 			previous_node_hashed_ids,
 			next_node_hashed_ids,
 			created_time,
-			signature
+			signature,
+			type,
 		FROM "node" 
 		WHERE public_key_id = $1 AND id > $2
 		LIMIT $3
@@ -199,10 +263,11 @@ func (r NodeRepositorySql) FetchNodesByOwnerKey(iOwnerKey models.PublicKey, iMin
 			&node.Id,
 			&node.NodeId,
 			&node.IsFinalized,
-			&node.PreviousNodeHashedIds,
-			&node.NextNodeHashedIds,
+			pq.Array(&node.PreviousNodeHashedIds),
+			pq.Array(&node.NextNodeHashedIds),
 			&node.CreatedTime,
 			&node.Signature,
+			&node.Type,
 		)
 
 		node.OwnerPublicKey = iOwnerKey

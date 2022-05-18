@@ -12,4 +12,4 @@ DbPassword: admin
 DbHost: localhost
 DbPort: 5432
 DbSslmode: disable
-GraphIdPrefix: "peer_0/"
+GraphIdPrefix: "peer_0"

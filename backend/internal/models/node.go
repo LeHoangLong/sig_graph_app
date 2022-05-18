@@ -11,6 +11,7 @@ type Node struct {
 	OwnerPublicKey        PublicKey  `json:"OwnerPublicKey"`
 	CreatedTime           CustomTime `json:"CreatedTime"`
 	Signature             string     `json:"Signature"`
+	Type                  string     `json:"Type"`
 }
 
 func MakeNode(
@@ -24,6 +25,7 @@ func MakeNode(
 	iOwnerPublicKey PublicKey,
 	iCreatedTime CustomTime,
 	iSignature string,
+	iType string,
 ) Node {
 	return Node{
 		Id:                    iId,
@@ -36,5 +38,6 @@ func MakeNode(
 		OwnerPublicKey:        iOwnerPublicKey,
 		CreatedTime:           iCreatedTime,
 		Signature:             iSignature,
+		Type:                  iType,
 	}
 }

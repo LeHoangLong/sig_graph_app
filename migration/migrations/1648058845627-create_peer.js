@@ -70,9 +70,9 @@ module.exports.up = async function (next) {
 
     await client.query(`
         CREATE TABLE IF NOT EXISTS "node_edge"(
-          id SERIAL PRIMARY KEY,
-          owner_node_id INTEGER REFERENCES "node"(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL,
-          referenced_node_id INTEGER REFERENCES "node"(id) ON DELETE CASCADE ON UPDATE CASCADE
+          src_node_id INTEGER REFERENCES "node"(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL,
+          dst_node_id INTEGER REFERENCES "node"(id) ON DELETE CASCADE ON UPDATE CASCADE,
+          PRIMARY KEY(src_node_id, dst_node_id)
         )
     `)
 
