@@ -1,23 +1,25 @@
 package repositories
 
 import (
+	"backend/internal/common"
 	"backend/internal/models"
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
 )
 
 type MaterialRepositorySql struct {
-	tx             *sql.Tx
+	db             *sql.DB
 	nodeRepository NodeRepositoryI
 }
 
 func MakeMaterialRepositorySql(
-	iTx *sql.Tx,
+	iDb *sql.DB,
 	iNodeRepository NodeRepositoryI,
 ) MaterialRepositorySql {
 	return MaterialRepositorySql{
-		tx:             iTx,
+		db:             iDb,
 		nodeRepository: iNodeRepository,
 	}
 }
@@ -30,7 +32,7 @@ func (r MaterialRepositorySql) AddMaterial(
 		return models.Material{}, err
 	}
 
-	rows, err := r.tx.Query(`INSERT INTO "material"(
+	rows, err := r.db.Query(`INSERT INTO "material"(
 			node_id,
 			name,
 			quantity,
@@ -51,7 +53,6 @@ func (r MaterialRepositorySql) AddMaterial(
 	if err != nil {
 		return models.Material{}, err
 	}
-	fmt.Println(2)
 
 	createdMaterial := iMaterial
 	createdMaterial.Node = node
@@ -89,10 +90,14 @@ func (r MaterialRepositorySql) FetchMaterialsByOwner(
 		statement += strings.Join(argsClause, " OR ")
 	}
 
-	rows, err := r.tx.Query(statement, args...)
+	fmt.Println("statement")
+	fmt.Println(statement)
+
+	rows, err := r.db.Query(statement, args...)
 	if err != nil {
 		return []models.Material{}, err
 	}
+	defer rows.Close()
 
 	ret := []models.Material{}
 	i := 0
@@ -110,4 +115,49 @@ func (r MaterialRepositorySql) FetchMaterialsByOwner(
 	}
 
 	return ret, nil
+}
+
+func (r MaterialRepositorySql) FetchMaterialById(
+	iContext context.Context,
+	iId int,
+) (models.Material, error) {
+	nodes, err := r.nodeRepository.FetchNodesById([]int{iId})
+	if err != nil {
+		return models.Material{}, err
+	}
+	if len(nodes) == 0 {
+		return models.Material{}, common.NotFound
+	}
+	node := nodes[0]
+	row := r.db.QueryRowContext(iContext, `
+		SELECT 
+			name,
+			quantity,
+			unit
+		FROM "material" 
+		WHERE node_id = $1
+	`, *node.Id)
+
+	var name string
+	var quantity models.CustomDecimal
+	var unit string
+
+	err = row.Scan(
+		&name,
+		&quantity,
+		&unit,
+	)
+	if err == sql.ErrNoRows {
+		return models.Material{}, common.NotFound
+	} else if err != nil {
+		return models.Material{}, err
+	}
+
+	material := models.NewMaterial(
+		node,
+		name,
+		quantity,
+		unit,
+	)
+	return material, nil
 }

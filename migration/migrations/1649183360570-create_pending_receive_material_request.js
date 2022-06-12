@@ -11,9 +11,19 @@ module.exports.up = async function (next) {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "pending_receive_material_request" (
         id SERIAL PRIMARY KEY,
-        main_node_id TEXT NOT NULL,
-        transfer_time TIMESTAMPTZ NOT NULL
+        main_node_id INTEGER UNIQUE REFERENCES "node"(id),
+        transfer_time TIMESTAMPTZ NOT NULL,
+        sender_public_key TEXT NOT NULL,
+        owner_id INTEGER REFERENCES "user"(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL,
+        is_outbound BOOL NOT NULL /* true if we send this request, false if we receive from others */
       )
+    `)
+
+    await client.query(`
+        CREATE TABLE IF NOT EXISTS "pending_receive_material_request_response" (
+          request_id INT REFERENCES "pending_receive_material_request" (id) ON UPDATE CASCADE ON DELETE CASCADE NOT NULL UNIQUE,
+          response_id TEXT NOT NULL UNIQUE
+        )
     `)
 
     await client.query(`
@@ -25,7 +35,7 @@ module.exports.up = async function (next) {
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS "signature_option" (
-        signature TEXT NOT NULL,
+        signature BYTEA NOT NULL,
         new_node_id TEXT NOT NULL,
         pending_request_id INTEGER REFERENCES "pending_receive_material_request"(id) ON DELETE CASCADE ON UPDATE CASCADE
       )
@@ -46,8 +56,8 @@ module.exports.down = async function (next) {
   try {
     await client.query('BEGIN')
     await client.query(`DROP TABLE IF EXISTS "signature_option"`)
-    await client.query(`DROP TABLE IF EXISTS "material_from_peer"`)
     await client.query(`DROP TABLE IF EXISTS "node_from_peer"`)
+    await client.query(`DROP TABLE IF EXISTS "pending_receive_material_request_response"`)
     await client.query(`DROP TABLE IF EXISTS "pending_receive_material_request"`)
     await client.query('COMMIT')
   } catch (exception) {

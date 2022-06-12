@@ -2,7 +2,7 @@ package repositories
 
 import (
 	"backend/internal/models"
-	graph_id_service "backend/internal/services/graph_id"
+	"backend/internal/services/node_contract"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -12,15 +12,17 @@ import (
 )
 
 type NodeRepositorySql struct {
-	hasher graph_id_service.IdHasher
-	tx     *sql.Tx
+	hasher node_contract.IdHasherI
+	db     *sql.DB
 }
 
 func MakeNodeRepositorySql(
-	iTx *sql.Tx,
+	iDb *sql.DB,
+	iHasher node_contract.IdHasherI,
 ) NodeRepositorySql {
 	return NodeRepositorySql{
-		tx: iTx,
+		db:     iDb,
+		hasher: iHasher,
 	}
 }
 
@@ -73,7 +75,7 @@ func (r NodeRepositorySql) CreateNode(iNode models.Node) (models.Node, error) {
 	statement += "ARRAY[" + strings.Join(nextNodeArrayStrings, ",") + "]::TEXT[]"
 	statement += ") RETURNING id"
 
-	result, err := r.tx.Query(statement, args...)
+	result, err := r.db.Query(statement, args...)
 
 	if err != nil {
 		return models.Node{}, err
@@ -109,7 +111,7 @@ func (r NodeRepositorySql) CreateNode(iNode models.Node) (models.Node, error) {
 		}
 		statement += strings.Join(argsStr, "), (")
 		statement += ") ON CONFLICT (src_node_id, dst_node_id) DO NOTHING"
-		result, err = r.tx.Query(statement, args...)
+		result, err = r.db.Query(statement, args...)
 		if err != nil {
 			return models.Node{}, err
 		}
@@ -121,7 +123,7 @@ func (r NodeRepositorySql) CreateNode(iNode models.Node) (models.Node, error) {
 }
 
 func (r NodeRepositorySql) FetchChildrenIdOfNode(iId int) (map[int]bool, error) {
-	result, err := r.tx.Query(`
+	result, err := r.db.Query(`
 		SELECT dst_node_id FROM "node_edge" WHERE src_node_id=$1
 	`, iId)
 
@@ -140,7 +142,7 @@ func (r NodeRepositorySql) FetchChildrenIdOfNode(iId int) (map[int]bool, error) 
 }
 
 func (r NodeRepositorySql) FetchParentIdOfNode(iId int) (map[int]bool, error) {
-	result, err := r.tx.Query(`
+	result, err := r.db.Query(`
 		SELECT src_node_id FROM "node_edge" WHERE dst_node_id=$1
 	`, iId)
 
@@ -187,35 +189,50 @@ func (r NodeRepositorySql) FetchNodesById(iId []int) ([]models.Node, error) {
 
 	statement += strings.Join(argsString, " OR ")
 	statement += ")"
-	result, err := r.tx.Query(statement, args...)
+	result, err := r.db.Query(statement, args...)
 
 	if err != nil {
 		return []models.Node{}, err
 	}
 
 	ret := []models.Node{}
-	index := 0
 	for result.Next() {
-		node := models.Node{}
+		node := models.Node{
+			Id:                    new(int),
+			PreviousNodeHashedIds: map[string]bool{},
+			NextNodeHashedIds:     map[string]bool{},
+			ParentIds:             map[int]bool{},
+			ChildrenIds:           map[int]bool{},
+		}
 		var publicKeyId int
 		var publicKeyValue string
-
-		result.Scan(
+		var previousNodeHashedIds, nextNodeHashedIds []string
+		err := result.Scan(
 			node.Id,
 			&node.NodeId,
 			&node.IsFinalized,
-			pq.Array(&node.PreviousNodeHashedIds),
-			pq.Array(&node.NextNodeHashedIds),
+			pq.Array(&previousNodeHashedIds),
+			pq.Array(&nextNodeHashedIds),
 			&node.CreatedTime,
 			&node.Signature,
 			&node.Type,
 			&publicKeyId,
 			&publicKeyValue,
 		)
-		node.OwnerPublicKey = models.MakePublicKey(&publicKeyId, publicKeyValue)
-		if index > len(iId) || *node.Id != iId[index] {
 
+		for _, hashedId := range previousNodeHashedIds {
+			node.PreviousNodeHashedIds[hashedId] = true
 		}
+
+		for _, hashedId := range nextNodeHashedIds {
+			node.NextNodeHashedIds[hashedId] = true
+		}
+
+		if err != nil {
+			return []models.Node{}, err
+		}
+
+		node.OwnerPublicKey = models.MakePublicKey(&publicKeyId, publicKeyValue)
 		ret = append(ret, node)
 	}
 
@@ -238,7 +255,7 @@ func (r NodeRepositorySql) FetchNodesById(iId []int) ([]models.Node, error) {
 }
 
 func (r NodeRepositorySql) FetchNodesByOwnerKey(iOwnerKey models.PublicKey, iMinId int, iLimit int) ([]models.Node, error) {
-	result, err := r.tx.Query(`
+	result, err := r.db.Query(`
 		SELECT 
 			id,
 			node_id,
@@ -247,7 +264,7 @@ func (r NodeRepositorySql) FetchNodesByOwnerKey(iOwnerKey models.PublicKey, iMin
 			next_node_hashed_ids,
 			created_time,
 			signature,
-			type,
+			type
 		FROM "node" 
 		WHERE public_key_id = $1 AND id > $2
 		LIMIT $3

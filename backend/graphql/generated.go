@@ -47,12 +47,19 @@ type ComplexityRoot struct {
 		CreatedTime func(childComplexity int) int
 		ID          func(childComplexity int) int
 		Name        func(childComplexity int) int
+		NodeID      func(childComplexity int) int
 		Quantity    func(childComplexity int) int
 		Unit        func(childComplexity int) int
 	}
 
+	MaterialGraph struct {
+		MainMaterial     func(childComplexity int) int
+		RelatedMaterials func(childComplexity int) int
+	}
+
 	Mutation struct {
-		CreateMaterial func(childComplexity int, iName string, iUnit string, iQuantity string) int
+		CreateMaterial   func(childComplexity int, name string, unit string, quantity string) int
+		TransferMaterial func(childComplexity int, materialID int, peerID int, peerPublicKeyID int, relatedMaterialsID []int) int
 	}
 
 	Peer struct {
@@ -67,17 +74,29 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Material  func(childComplexity int, id string) int
-		Materials func(childComplexity int) int
-		Peers     func(childComplexity int) int
+		MaterialByNodeID func(childComplexity int, nodeID string) int
+		Materials        func(childComplexity int) int
+		Peers            func(childComplexity int) int
+	}
+
+	ReceiveMaterialRequestRequest struct {
+		ExposedMaterials func(childComplexity int) int
+		TransferMaterial func(childComplexity int) int
+		TransferTime     func(childComplexity int) int
+	}
+
+	ReceiveMaterialRequestResponse struct {
+		Accepted func(childComplexity int) int
+		Request  func(childComplexity int) int
 	}
 }
 
 type MutationResolver interface {
-	CreateMaterial(ctx context.Context, iName string, iUnit string, iQuantity string) (*Material, error)
+	CreateMaterial(ctx context.Context, name string, unit string, quantity string) (*Material, error)
+	TransferMaterial(ctx context.Context, materialID int, peerID int, peerPublicKeyID int, relatedMaterialsID []int) (*ReceiveMaterialRequestResponse, error)
 }
 type QueryResolver interface {
-	Material(ctx context.Context, id string) (*Material, error)
+	MaterialByNodeID(ctx context.Context, nodeID string) (*Material, error)
 	Materials(ctx context.Context) ([]*Material, error)
 	Peers(ctx context.Context) ([]*Peer, error)
 }
@@ -118,6 +137,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Material.Name(childComplexity), true
 
+	case "Material.NodeId":
+		if e.complexity.Material.NodeID == nil {
+			break
+		}
+
+		return e.complexity.Material.NodeID(childComplexity), true
+
 	case "Material.Quantity":
 		if e.complexity.Material.Quantity == nil {
 			break
@@ -132,6 +158,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Material.Unit(childComplexity), true
 
+	case "MaterialGraph.MainMaterial":
+		if e.complexity.MaterialGraph.MainMaterial == nil {
+			break
+		}
+
+		return e.complexity.MaterialGraph.MainMaterial(childComplexity), true
+
+	case "MaterialGraph.RelatedMaterials":
+		if e.complexity.MaterialGraph.RelatedMaterials == nil {
+			break
+		}
+
+		return e.complexity.MaterialGraph.RelatedMaterials(childComplexity), true
+
 	case "Mutation.createMaterial":
 		if e.complexity.Mutation.CreateMaterial == nil {
 			break
@@ -142,7 +182,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateMaterial(childComplexity, args["iName"].(string), args["iUnit"].(string), args["iQuantity"].(string)), true
+		return e.complexity.Mutation.CreateMaterial(childComplexity, args["name"].(string), args["unit"].(string), args["quantity"].(string)), true
+
+	case "Mutation.transferMaterial":
+		if e.complexity.Mutation.TransferMaterial == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_transferMaterial_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.TransferMaterial(childComplexity, args["materialId"].(int), args["peerId"].(int), args["peerPublicKeyId"].(int), args["relatedMaterialsId"].([]int)), true
 
 	case "Peer.Alias":
 		if e.complexity.Peer.Alias == nil {
@@ -179,17 +231,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PublicKey.Value(childComplexity), true
 
-	case "Query.material":
-		if e.complexity.Query.Material == nil {
+	case "Query.materialByNodeId":
+		if e.complexity.Query.MaterialByNodeID == nil {
 			break
 		}
 
-		args, err := ec.field_Query_material_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_materialByNodeId_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Query.Material(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.MaterialByNodeID(childComplexity, args["nodeId"].(string)), true
 
 	case "Query.materials":
 		if e.complexity.Query.Materials == nil {
@@ -204,6 +256,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Peers(childComplexity), true
+
+	case "ReceiveMaterialRequestRequest.ExposedMaterials":
+		if e.complexity.ReceiveMaterialRequestRequest.ExposedMaterials == nil {
+			break
+		}
+
+		return e.complexity.ReceiveMaterialRequestRequest.ExposedMaterials(childComplexity), true
+
+	case "ReceiveMaterialRequestRequest.TransferMaterial":
+		if e.complexity.ReceiveMaterialRequestRequest.TransferMaterial == nil {
+			break
+		}
+
+		return e.complexity.ReceiveMaterialRequestRequest.TransferMaterial(childComplexity), true
+
+	case "ReceiveMaterialRequestRequest.TransferTime":
+		if e.complexity.ReceiveMaterialRequestRequest.TransferTime == nil {
+			break
+		}
+
+		return e.complexity.ReceiveMaterialRequestRequest.TransferTime(childComplexity), true
+
+	case "ReceiveMaterialRequestResponse.Accepted":
+		if e.complexity.ReceiveMaterialRequestResponse.Accepted == nil {
+			break
+		}
+
+		return e.complexity.ReceiveMaterialRequestResponse.Accepted(childComplexity), true
+
+	case "ReceiveMaterialRequestResponse.Request":
+		if e.complexity.ReceiveMaterialRequestResponse.Request == nil {
+			break
+		}
+
+		return e.complexity.ReceiveMaterialRequestResponse.Request(childComplexity), true
 
 	}
 	return 0, false
@@ -272,7 +359,8 @@ var sources = []*ast.Source{
 	{Name: "schema.graphql", Input: `scalar Time
 
 type Material {
-  Id: String!,
+  Id: Int!,
+  NodeId: String!,
   Name: String!,
   Unit: String!,
   Quantity: String!,
@@ -290,16 +378,38 @@ type Peer {
   PublicKeys: [PublicKey!]!,
 }
 
+type MaterialGraph {
+  MainMaterial: Material!,
+  RelatedMaterials: [Material]!,
+}
+
+type ReceiveMaterialRequestRequest {
+  TransferMaterial: Material!,
+  ExposedMaterials: [Material]!,
+  TransferTime: Time!,
+}
+
+type ReceiveMaterialRequestResponse {
+  Accepted: Boolean!,
+  Request: ReceiveMaterialRequestRequest!,
+}
+
 type Mutation {
   createMaterial(
-    iName: String!, 
-    iUnit: String!, 
-    iQuantity: String!,
+    name: String!, 
+    unit: String!, 
+    quantity: String!,
   ): Material
+  transferMaterial(
+    materialId: Int!, 
+    peerId: Int!,
+    peerPublicKeyId: Int!,
+    relatedMaterialsId: [Int!]!,
+  ) : ReceiveMaterialRequestResponse
 }
 
 type Query {
-  material(id: String!): Material
+  materialByNodeId(nodeId: String!): Material
   materials: [Material!]!
   peers: [Peer!]!
 }`, BuiltIn: false},
@@ -314,32 +424,74 @@ func (ec *executionContext) field_Mutation_createMaterial_args(ctx context.Conte
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["iName"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("iName"))
+	if tmp, ok := rawArgs["name"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["iName"] = arg0
+	args["name"] = arg0
 	var arg1 string
-	if tmp, ok := rawArgs["iUnit"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("iUnit"))
+	if tmp, ok := rawArgs["unit"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("unit"))
 		arg1, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["iUnit"] = arg1
+	args["unit"] = arg1
 	var arg2 string
-	if tmp, ok := rawArgs["iQuantity"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("iQuantity"))
+	if tmp, ok := rawArgs["quantity"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("quantity"))
 		arg2, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["iQuantity"] = arg2
+	args["quantity"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_transferMaterial_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["materialId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("materialId"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["materialId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["peerId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("peerId"))
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["peerId"] = arg1
+	var arg2 int
+	if tmp, ok := rawArgs["peerPublicKeyId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("peerPublicKeyId"))
+		arg2, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["peerPublicKeyId"] = arg2
+	var arg3 []int
+	if tmp, ok := rawArgs["relatedMaterialsId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("relatedMaterialsId"))
+		arg3, err = ec.unmarshalNInt2ᚕintᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["relatedMaterialsId"] = arg3
 	return args, nil
 }
 
@@ -358,18 +510,18 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_material_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_materialByNodeId_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+	if tmp, ok := rawArgs["nodeId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nodeId"))
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["id"] = arg0
+	args["nodeId"] = arg0
 	return args, nil
 }
 
@@ -445,6 +597,41 @@ func (ec *executionContext) _Material_Id(ctx context.Context, field graphql.Coll
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Material_NodeId(ctx context.Context, field graphql.CollectedField, obj *Material) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Material",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NodeID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -601,6 +788,76 @@ func (ec *executionContext) _Material_CreatedTime(ctx context.Context, field gra
 	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _MaterialGraph_MainMaterial(ctx context.Context, field graphql.CollectedField, obj *MaterialGraph) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "MaterialGraph",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MainMaterial, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Material)
+	fc.Result = res
+	return ec.marshalNMaterial2ᚖbackendᚋgraphqlᚐMaterial(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _MaterialGraph_RelatedMaterials(ctx context.Context, field graphql.CollectedField, obj *MaterialGraph) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "MaterialGraph",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RelatedMaterials, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*Material)
+	fc.Result = res
+	return ec.marshalNMaterial2ᚕᚖbackendᚋgraphqlᚐMaterial(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Mutation_createMaterial(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -626,7 +883,7 @@ func (ec *executionContext) _Mutation_createMaterial(ctx context.Context, field 
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateMaterial(rctx, args["iName"].(string), args["iUnit"].(string), args["iQuantity"].(string))
+		return ec.resolvers.Mutation().CreateMaterial(rctx, args["name"].(string), args["unit"].(string), args["quantity"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -638,6 +895,45 @@ func (ec *executionContext) _Mutation_createMaterial(ctx context.Context, field 
 	res := resTmp.(*Material)
 	fc.Result = res
 	return ec.marshalOMaterial2ᚖbackendᚋgraphqlᚐMaterial(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_transferMaterial(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_transferMaterial_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().TransferMaterial(rctx, args["materialId"].(int), args["peerId"].(int), args["peerPublicKeyId"].(int), args["relatedMaterialsId"].([]int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*ReceiveMaterialRequestResponse)
+	fc.Result = res
+	return ec.marshalOReceiveMaterialRequestResponse2ᚖbackendᚋgraphqlᚐReceiveMaterialRequestResponse(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Peer_Id(ctx context.Context, field graphql.CollectedField, obj *Peer) (ret graphql.Marshaler) {
@@ -815,7 +1111,7 @@ func (ec *executionContext) _PublicKey_Value(ctx context.Context, field graphql.
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Query_material(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_materialByNodeId(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -832,7 +1128,7 @@ func (ec *executionContext) _Query_material(ctx context.Context, field graphql.C
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_material_args(ctx, rawArgs)
+	args, err := ec.field_Query_materialByNodeId_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -840,7 +1136,7 @@ func (ec *executionContext) _Query_material(ctx context.Context, field graphql.C
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Material(rctx, args["id"].(string))
+		return ec.resolvers.Query().MaterialByNodeID(rctx, args["nodeId"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -993,6 +1289,181 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 	res := resTmp.(*introspection.Schema)
 	fc.Result = res
 	return ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ReceiveMaterialRequestRequest_TransferMaterial(ctx context.Context, field graphql.CollectedField, obj *ReceiveMaterialRequestRequest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ReceiveMaterialRequestRequest",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TransferMaterial, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*Material)
+	fc.Result = res
+	return ec.marshalNMaterial2ᚖbackendᚋgraphqlᚐMaterial(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ReceiveMaterialRequestRequest_ExposedMaterials(ctx context.Context, field graphql.CollectedField, obj *ReceiveMaterialRequestRequest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ReceiveMaterialRequestRequest",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExposedMaterials, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*Material)
+	fc.Result = res
+	return ec.marshalNMaterial2ᚕᚖbackendᚋgraphqlᚐMaterial(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ReceiveMaterialRequestRequest_TransferTime(ctx context.Context, field graphql.CollectedField, obj *ReceiveMaterialRequestRequest) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ReceiveMaterialRequestRequest",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TransferTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ReceiveMaterialRequestResponse_Accepted(ctx context.Context, field graphql.CollectedField, obj *ReceiveMaterialRequestResponse) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ReceiveMaterialRequestResponse",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Accepted, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ReceiveMaterialRequestResponse_Request(ctx context.Context, field graphql.CollectedField, obj *ReceiveMaterialRequestResponse) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ReceiveMaterialRequestResponse",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Request, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*ReceiveMaterialRequestRequest)
+	fc.Result = res
+	return ec.marshalNReceiveMaterialRequestRequest2ᚖbackendᚋgraphqlᚐReceiveMaterialRequestRequest(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -2152,6 +2623,16 @@ func (ec *executionContext) _Material(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "NodeId":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Material_NodeId(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		case "Name":
 			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Material_Name(ctx, field, obj)
@@ -2203,6 +2684,47 @@ func (ec *executionContext) _Material(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
+var materialGraphImplementors = []string{"MaterialGraph"}
+
+func (ec *executionContext) _MaterialGraph(ctx context.Context, sel ast.SelectionSet, obj *MaterialGraph) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, materialGraphImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MaterialGraph")
+		case "MainMaterial":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._MaterialGraph_MainMaterial(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "RelatedMaterials":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._MaterialGraph_RelatedMaterials(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -2225,6 +2747,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createMaterial":
 			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createMaterial(ctx, field)
+			}
+
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, innerFunc)
+
+		case "transferMaterial":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_transferMaterial(ctx, field)
 			}
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, innerFunc)
@@ -2351,7 +2880,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
-		case "material":
+		case "materialByNodeId":
 			field := field
 
 			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
@@ -2360,7 +2889,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_material(ctx, field)
+				res = ec._Query_materialByNodeId(ctx, field)
 				return res
 			}
 
@@ -2431,6 +2960,98 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, innerFunc)
 
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var receiveMaterialRequestRequestImplementors = []string{"ReceiveMaterialRequestRequest"}
+
+func (ec *executionContext) _ReceiveMaterialRequestRequest(ctx context.Context, sel ast.SelectionSet, obj *ReceiveMaterialRequestRequest) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, receiveMaterialRequestRequestImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ReceiveMaterialRequestRequest")
+		case "TransferMaterial":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._ReceiveMaterialRequestRequest_TransferMaterial(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "ExposedMaterials":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._ReceiveMaterialRequestRequest_ExposedMaterials(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "TransferTime":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._ReceiveMaterialRequestRequest_TransferTime(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var receiveMaterialRequestResponseImplementors = []string{"ReceiveMaterialRequestResponse"}
+
+func (ec *executionContext) _ReceiveMaterialRequestResponse(ctx context.Context, sel ast.SelectionSet, obj *ReceiveMaterialRequestResponse) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, receiveMaterialRequestResponseImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ReceiveMaterialRequestResponse")
+		case "Accepted":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._ReceiveMaterialRequestResponse_Accepted(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "Request":
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._ReceiveMaterialRequestResponse_Request(ctx, field, obj)
+			}
+
+			out.Values[i] = innerFunc(ctx)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2881,6 +3502,76 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 	return res
 }
 
+func (ec *executionContext) unmarshalNInt2ᚕintᚄ(ctx context.Context, v interface{}) ([]int, error) {
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]int, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNInt2int(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNInt2ᚕintᚄ(ctx context.Context, sel ast.SelectionSet, v []int) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNInt2int(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMaterial2ᚕᚖbackendᚋgraphqlᚐMaterial(ctx context.Context, sel ast.SelectionSet, v []*Material) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOMaterial2ᚖbackendᚋgraphqlᚐMaterial(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
 func (ec *executionContext) marshalNMaterial2ᚕᚖbackendᚋgraphqlᚐMaterialᚄ(ctx context.Context, sel ast.SelectionSet, v []*Material) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -3041,6 +3732,16 @@ func (ec *executionContext) marshalNPublicKey2ᚖbackendᚋgraphqlᚐPublicKey(c
 		return graphql.Null
 	}
 	return ec._PublicKey(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNReceiveMaterialRequestRequest2ᚖbackendᚋgraphqlᚐReceiveMaterialRequestRequest(ctx context.Context, sel ast.SelectionSet, v *ReceiveMaterialRequestRequest) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._ReceiveMaterialRequestRequest(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
@@ -3357,6 +4058,13 @@ func (ec *executionContext) marshalOMaterial2ᚖbackendᚋgraphqlᚐMaterial(ctx
 		return graphql.Null
 	}
 	return ec._Material(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOReceiveMaterialRequestResponse2ᚖbackendᚋgraphqlᚐReceiveMaterialRequestResponse(ctx context.Context, sel ast.SelectionSet, v *ReceiveMaterialRequestResponse) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ReceiveMaterialRequestResponse(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

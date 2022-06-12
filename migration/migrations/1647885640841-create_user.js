@@ -11,13 +11,15 @@ module.exports.up = async function (next) {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "user" (
         id SERIAL PRIMARY KEY,
-        username TEXT NOT NULL UNIQUE
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        salt TEXT NOT NULL
       )
     `)
 
     // create test user
     await client.query(`
-        INSERT INTO "user" (username) VALUES ('test') ON CONFLICT DO NOTHING
+        INSERT INTO "user" (username, password_hash, salt) VALUES ('test', '', '') ON CONFLICT DO NOTHING
     `)
   } catch (exception) {
     await client.query('ROLLBACK')

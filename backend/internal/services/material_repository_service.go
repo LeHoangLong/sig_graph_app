@@ -3,22 +3,26 @@ package services
 import (
 	"backend/internal/models"
 	"backend/internal/repositories"
+	"container/list"
 	"context"
 	"fmt"
 )
 
 type MaterialRepositoryService struct {
-	repositoryFactory repositories.MaterialRepositoryFactory
-	userKeyRepository repositories.UserKeyRepositoryI
+	repositoryFactory  repositories.MaterialRepositoryFactory
+	userKeyRepository  repositories.UserKeyRepositoryI
+	materialRepository repositories.MaterialRepositoryI
 }
 
 func MakeMaterialRepositoryService(
 	iRepositoryFactory repositories.MaterialRepositoryFactory,
 	iUserKeyRepository repositories.UserKeyRepositoryI,
+	iMaterialRepository repositories.MaterialRepositoryI,
 ) MaterialRepositoryService {
 	return MaterialRepositoryService{
-		repositoryFactory: iRepositoryFactory,
-		userKeyRepository: iUserKeyRepository,
+		repositoryFactory:  iRepositoryFactory,
+		userKeyRepository:  iUserKeyRepository,
+		materialRepository: iMaterialRepository,
 	}
 }
 
@@ -91,4 +95,60 @@ func (s MaterialRepositoryService) DoesMaterialBelongToUser(
 	}
 
 	return false, nil
+}
+
+func (s *MaterialRepositoryService) SaveMaterials(
+	iContext context.Context,
+	iMaterials []models.Material,
+) ([]models.Material, error) {
+	savedMaterials := []models.Material{}
+	for _, material := range iMaterials {
+		savedMaterial, err := s.materialRepository.AddMaterial(material)
+		if err != nil {
+			return []models.Material{}, err
+		}
+		savedMaterials = append(savedMaterials, savedMaterial)
+	}
+	return savedMaterials, nil
+}
+
+func (s *MaterialRepositoryService) FetchMaterialById(
+	iContext context.Context,
+	iMaterialId int,
+) (models.Material, error) {
+	return s.materialRepository.FetchMaterialById(iContext, iMaterialId)
+}
+
+func (s *MaterialRepositoryService) FetchMaterialsAndRelated(
+	iContext context.Context,
+	iMainMaterialId int,
+) (models.Material, []models.Material, error) {
+	mainMaterial, err := s.materialRepository.FetchMaterialById(iContext, iMainMaterialId)
+	if err != nil {
+		return models.Material{}, []models.Material{}, nil
+	}
+
+	list := list.New()
+	for id := range mainMaterial.ChildrenIds {
+		list.PushBack(id)
+	}
+	for id := range mainMaterial.ParentIds {
+		list.PushBack(id)
+	}
+	relatedMaterial := []models.Material{}
+	for list.Len() > 0 {
+		id := list.Front()
+		material, err := s.materialRepository.FetchMaterialById(iContext, id.Value.(int))
+		if err != nil {
+			return models.Material{}, []models.Material{}, nil
+		}
+		relatedMaterial = append(relatedMaterial, material)
+		for id := range material.ChildrenIds {
+			list.PushBack(id)
+		}
+		for id := range material.ParentIds {
+			list.PushBack(id)
+		}
+	}
+	return mainMaterial, relatedMaterial, nil
 }

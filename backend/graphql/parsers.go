@@ -6,9 +6,27 @@ import (
 	"time"
 )
 
+func ParseReceiveMaterialRequestRequest(
+	iRequest models.PendingMaterialReceiveRequest,
+) ReceiveMaterialRequestRequest {
+	parsedMainMaterial := ParseMaterial(iRequest.ToBeReceivedMaterial)
+	exposedMaterials := []*Material{}
+	for _, material := range iRequest.RelatedMaterials {
+		parsedMaterial := ParseMaterial(material)
+		exposedMaterials = append(exposedMaterials, &parsedMaterial)
+	}
+
+	return ReceiveMaterialRequestRequest{
+		TransferMaterial: &parsedMainMaterial,
+		ExposedMaterials: exposedMaterials,
+		TransferTime:     time.Time(iRequest.TransferTime),
+	}
+}
+
 func ParseMaterial(iMaterial models.Material) Material {
 	return Material{
-		ID:          iMaterial.NodeId,
+		ID:          *iMaterial.Id,
+		NodeID:      iMaterial.NodeId,
 		Name:        iMaterial.Name,
 		Unit:        iMaterial.Unit,
 		Quantity:    iMaterial.Quantity.String(),

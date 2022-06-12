@@ -20,10 +20,20 @@ func (m *material) SetHeader(iHeader node_contract.NodeHeader) {
 }
 
 func makeMaterialFromModel(iMaterial models.Material) material {
+	header := node_contract.MakeNodeHeader(
+		iMaterial.NodeId,
+		iMaterial.IsFinalized,
+		iMaterial.PreviousNodeHashedIds,
+		iMaterial.NextNodeHashedIds,
+		iMaterial.OwnerPublicKey.Value,
+		iMaterial.CreatedTime,
+		iMaterial.Signature,
+	)
 	return material{
-		Name:     iMaterial.Name,
-		Unit:     iMaterial.Unit,
-		Quantity: iMaterial.Quantity,
+		NodeHeader: header,
+		Name:       iMaterial.Name,
+		Unit:       iMaterial.Unit,
+		Quantity:   iMaterial.Quantity,
 	}
 }
 

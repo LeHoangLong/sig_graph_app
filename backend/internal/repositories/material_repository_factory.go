@@ -1,19 +1,23 @@
 package repositories
 
 import (
+	"backend/internal/services/node_contract"
 	"context"
 	"database/sql"
 )
 
 type MaterialRepositoryFactory struct {
-	db *sql.DB
+	db     *sql.DB
+	hasher node_contract.IdHasherI
 }
 
 func MakeMaterialRepositoryFactory(
 	iDb *sql.DB,
+	iHasher node_contract.IdHasherI,
 ) MaterialRepositoryFactory {
 	return MaterialRepositoryFactory{
-		db: iDb,
+		db:     iDb,
+		hasher: iHasher,
 	}
 }
 
@@ -28,8 +32,8 @@ func (f MaterialRepositoryFactory) GetRepository(
 		return nil
 	}
 
-	nodeRepository := MakeNodeRepositorySql(tx)
-	materialRepository := MakeMaterialRepositorySql(tx, nodeRepository)
+	nodeRepository := MakeNodeRepositorySql(f.db, f.hasher)
+	materialRepository := MakeMaterialRepositorySql(f.db, nodeRepository)
 
 	err = iHandler(materialRepository)
 	if err != nil {

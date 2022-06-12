@@ -1,7 +1,8 @@
 scalar Time
 
 type Material {
-  Id: String!,
+  Id: Int!,
+  NodeId: String!,
   Name: String!,
   Unit: String!,
   Quantity: String!,
@@ -19,16 +20,38 @@ type Peer {
   PublicKeys: [PublicKey!]!,
 }
 
+type MaterialGraph {
+  MainMaterial: Material!,
+  RelatedMaterials: [Material]!,
+}
+
+type ReceiveMaterialRequestRequest {
+  TransferMaterial: Material!,
+  ExposedMaterials: [Material]!,
+  TransferTime: Time!,
+}
+
+type ReceiveMaterialRequestResponse {
+  Accepted: Boolean!,
+  Request: ReceiveMaterialRequestRequest!,
+}
+
 type Mutation {
   createMaterial(
-    iName: String!, 
-    iUnit: String!, 
-    iQuantity: String!,
+    name: String!, 
+    unit: String!, 
+    quantity: String!,
   ): Material
+  transferMaterial(
+    materialId: Int!, 
+    peerId: Int!,
+    peerPublicKeyId: Int!,
+    relatedMaterialsId: [Int!]!,
+  ) : ReceiveMaterialRequestResponse
 }
 
 type Query {
-  material(id: String!): Material
+  materialByNodeId(nodeId: String!): Material
   materials: [Material!]!
   peers: [Peer!]!
 }

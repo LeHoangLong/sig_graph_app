@@ -16,6 +16,8 @@ services:
             - ./backend:/root/workspace
         command: air
         working_dir: /root/workspace
+        environment:
+            - CONFIG_FILE=config.yaml
         network_mode: host
 
     migrations:

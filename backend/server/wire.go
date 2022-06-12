@@ -9,6 +9,7 @@ import (
 	"backend/internal/services"
 	graph_id_service "backend/internal/services/graph_id"
 	material_contract_service "backend/internal/services/material_contract"
+	node_contract "backend/internal/services/node_contract"
 	"database/sql"
 	"fmt"
 	"os"
@@ -152,8 +153,38 @@ func InitializeSqlDriver() *sql.DB {
 	return db
 }
 
+func InitializeIdHasher() node_contract.IdHasher {
+	wire.Build(node_contract.MakeIdHasher)
+	return node_contract.IdHasher{}
+}
+
+var IdHasherSet = wire.NewSet(
+	InitializeIdHasher,
+	wire.Bind(new(node_contract.IdHasherI), new(node_contract.IdHasher)),
+)
+
+func InitializeNodeRepositorySql() repositories.NodeRepositorySql {
+	wire.Build(repositories.MakeNodeRepositorySql, IdHasherSet, InitializeSqlDriver)
+	return repositories.NodeRepositorySql{}
+}
+
+var NodeRepositorySet = wire.NewSet(
+	InitializeNodeRepositorySql,
+	wire.Bind(new(repositories.NodeRepositoryI), new(repositories.NodeRepositorySql)),
+)
+
+func InitializeMaterialRepository() repositories.MaterialRepositorySql {
+	wire.Build(repositories.MakeMaterialRepositorySql, InitializeSqlDriver, NodeRepositorySet)
+	return repositories.MaterialRepositorySql{}
+}
+
+var MaterialRepositorySet = wire.NewSet(
+	InitializeMaterialRepository,
+	wire.Bind(new(repositories.MaterialRepositoryI), new(repositories.MaterialRepositorySql)),
+)
+
 func InitializeMaterialRepositorySqlFactory() repositories.MaterialRepositoryFactory {
-	wire.Build(repositories.MakeMaterialRepositoryFactory, InitializeSqlDriver)
+	wire.Build(repositories.MakeMaterialRepositoryFactory, InitializeSqlDriver, IdHasherSet)
 	return repositories.MaterialRepositoryFactory{}
 }
 
@@ -204,7 +235,7 @@ func InitializeMaterialContractServiceFactory() material_contract_service.Materi
 }
 
 func InitializeMaterialRepositoryService() services.MaterialRepositoryService {
-	wire.Build(services.MakeMaterialRepositoryService, InitializeMaterialRepositorySqlFactory, UserKeySet)
+	wire.Build(services.MakeMaterialRepositoryService, InitializeMaterialRepositorySqlFactory, UserKeySet, MaterialRepositorySet)
 	return services.MaterialRepositoryService{}
 }
 

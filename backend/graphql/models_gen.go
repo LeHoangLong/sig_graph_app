@@ -7,11 +7,17 @@ import (
 )
 
 type Material struct {
-	ID          string    `json:"Id"`
+	ID          int       `json:"Id"`
+	NodeID      string    `json:"NodeId"`
 	Name        string    `json:"Name"`
 	Unit        string    `json:"Unit"`
 	Quantity    string    `json:"Quantity"`
 	CreatedTime time.Time `json:"CreatedTime"`
+}
+
+type MaterialGraph struct {
+	MainMaterial     *Material   `json:"MainMaterial"`
+	RelatedMaterials []*Material `json:"RelatedMaterials"`
 }
 
 type Peer struct {
@@ -23,4 +29,15 @@ type Peer struct {
 type PublicKey struct {
 	ID    int    `json:"Id"`
 	Value string `json:"Value"`
+}
+
+type ReceiveMaterialRequestRequest struct {
+	TransferMaterial *Material   `json:"TransferMaterial"`
+	ExposedMaterials []*Material `json:"ExposedMaterials"`
+	TransferTime     time.Time   `json:"TransferTime"`
+}
+
+type ReceiveMaterialRequestResponse struct {
+	Accepted bool                           `json:"Accepted"`
+	Request  *ReceiveMaterialRequestRequest `json:"Request"`
 }

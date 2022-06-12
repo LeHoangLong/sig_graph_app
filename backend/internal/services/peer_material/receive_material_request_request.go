@@ -24,10 +24,12 @@ type SignatureOption struct {
 }
 
 type ReceiveMaterialRequestRequest struct {
-	MainNodeId       string
-	Nodes            map[string]Node
-	TransferTime     time.Time
-	SignatureOptions []SignatureOption
+	RecipientPublicKey string
+	MainNodeId         string
+	Nodes              map[string]Node
+	TransferTime       time.Time
+	SenderPublicKey    string
+	SignatureOptions   []SignatureOption
 }
 
 func MakeNodeSignatureOption(
@@ -40,16 +42,20 @@ func MakeNodeSignatureOption(
 	}
 }
 
-func MakeSendMaterialRequestRequest(
+func MakeReceiveMaterialRequestRequest(
+	iRecipientPublicKey string,
 	iMainNodeId string,
 	iNodes map[string]Node,
 	iTransferTime time.Time,
+	iSenderPublicKey string,
 	iSignatureOptions []SignatureOption,
 ) ReceiveMaterialRequestRequest {
 	return ReceiveMaterialRequestRequest{
-		MainNodeId:       iMainNodeId,
-		Nodes:            iNodes,
-		TransferTime:     iTransferTime,
-		SignatureOptions: iSignatureOptions,
+		RecipientPublicKey: iRecipientPublicKey,
+		MainNodeId:         iMainNodeId,
+		Nodes:              iNodes,
+		TransferTime:       iTransferTime,
+		SignatureOptions:   iSignatureOptions,
+		SenderPublicKey:    iSenderPublicKey,
 	}
 }

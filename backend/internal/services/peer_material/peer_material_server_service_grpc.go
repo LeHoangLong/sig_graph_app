@@ -10,12 +10,20 @@ type PeerMaterialServerServiceGrpc struct {
 	grpc.UnimplementedMaterialServiceServer
 }
 
+func MakePeerMaterialServerServiceGrpc(
+	iHandler ReceiveMaterialRequestReceivedHandler,
+) *PeerMaterialServerServiceGrpc {
+	return &PeerMaterialServerServiceGrpc{
+		handler: iHandler,
+	}
+}
+
 func convertGrpcToOption(
 	iOption *grpc.SignatureOption,
 ) SignatureOption {
 	return SignatureOption{
 		NodeId:    iOption.NodeId,
-		Signature: iOption.Signature,
+		Signature: string(iOption.Signature),
 	}
 }
 
@@ -42,12 +50,14 @@ func convertGrpcToReceiveMaterialRequestRequest(
 		nodes[node.Id] = convertGrpcToNode(node)
 	}
 
-	return ReceiveMaterialRequestRequest{
-		MainNodeId:       iRequest.MainNodeId,
-		TransferTime:     iRequest.TransferTime.AsTime(),
-		SignatureOptions: options,
-		Nodes:            nodes,
-	}
+	return MakeReceiveMaterialRequestRequest(
+		iRequest.RecipientPublicKey,
+		iRequest.MainNodeId,
+		nodes,
+		iRequest.TransferTime.AsTime(),
+		iRequest.SenderPublicKey,
+		options,
+	)
 }
 
 func convertResponseToGrpcResponse(
@@ -65,7 +75,7 @@ func (s PeerMaterialServerServiceGrpc) SendReceiveMaterialRequest(
 ) (*grpc.ReceiveMaterialRequestResponse, error) {
 	parsedRequest := convertGrpcToReceiveMaterialRequestRequest(iRequest)
 
-	response, err := s.handler(iCtx, parsedRequest)
+	response, err := s.handler.Handle(iCtx, parsedRequest)
 	if err != nil {
 		return nil, err
 	}

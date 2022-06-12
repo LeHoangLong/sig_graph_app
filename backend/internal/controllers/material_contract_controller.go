@@ -74,9 +74,9 @@ func (c MaterialContractController) CreateMaterialForCurrentUser(
 	return material, nil
 }
 
-func (c MaterialContractController) GetMaterialById(
+func (c MaterialContractController) GetMaterialByNodeId(
 	iCtx context.Context,
-	iMaterialId string,
+	iMaterialNodeId string,
 ) (models.Material, error) {
 	userId, err := services.GetCurrentUserFromContext(iCtx)
 	if err != nil {
@@ -85,7 +85,7 @@ func (c MaterialContractController) GetMaterialById(
 
 	materialFetchSc := c.materialServiceFactory.BuildMaterialFetchService()
 	material, err := materialFetchSc.GetMaterialById(
-		iMaterialId,
+		iMaterialNodeId,
 	)
 
 	doesMaterialBelongToUser, err := c.repositoryService.DoesMaterialBelongToUser(userId, material)

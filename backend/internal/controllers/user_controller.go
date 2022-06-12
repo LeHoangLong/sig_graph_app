@@ -1,12 +1,15 @@
 package controllers
 
-import "backend/internal/services"
+import (
+	"backend/internal/services"
+)
 
 type UserController struct {
 	userService *services.UserService
 	jwtService  *services.JwtService
 }
 
+/*
 func (c *UserController) LogIn(username string, password string) (string, error) {
 	err := c.userService.VerifyUser(username, password)
 	if err != nil {
@@ -27,9 +30,13 @@ func (c *UserController) LogInWithToken(token string) (string, error) {
 		return "", err
 	}
 
-	err = c.userService.DoesUserExist(username)
+	exist, err := c.userService.DoesUserExist(username)
 	if err != nil {
 		return "", err
+	}
+
+	if !exist {
+		return "", errors.New("NotFound")
 	}
 
 	return username, nil
@@ -48,3 +55,4 @@ func (c *UserController) SignUp(username string, password string) (string, error
 
 	return token, nil
 }
+*/

@@ -12,6 +12,7 @@ import (
 	"backend/internal/services"
 	"backend/internal/services/graph_id"
 	"backend/internal/services/material_contract"
+	"backend/internal/services/node_contract"
 	"database/sql"
 	"fmt"
 	"github.com/google/wire"
@@ -49,9 +50,29 @@ func InitializeHLGatewayInitializer() drivers.HLGatewayInitializer {
 	return hlGatewayInitializer
 }
 
+func InitializeIdHasher() node_contract.IdHasher {
+	idHasher := node_contract.MakeIdHasher()
+	return idHasher
+}
+
+func InitializeNodeRepositorySql() repositories.NodeRepositorySql {
+	sqlDB := InitializeSqlDriver()
+	idHasher := InitializeIdHasher()
+	nodeRepositorySql := repositories.MakeNodeRepositorySql(sqlDB, idHasher)
+	return nodeRepositorySql
+}
+
+func InitializeMaterialRepository() repositories.MaterialRepositorySql {
+	sqlDB := InitializeSqlDriver()
+	nodeRepositorySql := InitializeNodeRepositorySql()
+	materialRepositorySql := repositories.MakeMaterialRepositorySql(sqlDB, nodeRepositorySql)
+	return materialRepositorySql
+}
+
 func InitializeMaterialRepositorySqlFactory() repositories.MaterialRepositoryFactory {
 	sqlDB := InitializeSqlDriver()
-	materialRepositoryFactory := repositories.MakeMaterialRepositoryFactory(sqlDB)
+	idHasher := InitializeIdHasher()
+	materialRepositoryFactory := repositories.MakeMaterialRepositoryFactory(sqlDB, idHasher)
 	return materialRepositoryFactory
 }
 
@@ -92,7 +113,8 @@ func InitializeMaterialContractServiceFactory() material_contract_service.Materi
 func InitializeMaterialRepositoryService() services.MaterialRepositoryService {
 	materialRepositoryFactory := InitializeMaterialRepositorySqlFactory()
 	userKeyRepositorySql := InitializeUserKeyRepositorySql()
-	materialRepositoryService := services.MakeMaterialRepositoryService(materialRepositoryFactory, userKeyRepositorySql)
+	materialRepositorySql := InitializeMaterialRepository()
+	materialRepositoryService := services.MakeMaterialRepositoryService(materialRepositoryFactory, userKeyRepositorySql, materialRepositorySql)
 	return materialRepositoryService
 }
 
@@ -214,6 +236,18 @@ func InitializeSqlDriver() *sql.DB {
 	}
 	return db
 }
+
+var IdHasherSet = wire.NewSet(
+	InitializeIdHasher, wire.Bind(new(node_contract.IdHasherI), new(node_contract.IdHasher)),
+)
+
+var NodeRepositorySet = wire.NewSet(
+	InitializeNodeRepositorySql, wire.Bind(new(repositories.NodeRepositoryI), new(repositories.NodeRepositorySql)),
+)
+
+var MaterialRepositorySet = wire.NewSet(
+	InitializeMaterialRepository, wire.Bind(new(repositories.MaterialRepositoryI), new(repositories.MaterialRepositorySql)),
+)
 
 var PeerSet = wire.NewSet(
 	InitializePeerRepositorySql, wire.Bind(new(repositories.PeerRepositoryI), new(repositories.PeerRepositorySql)),

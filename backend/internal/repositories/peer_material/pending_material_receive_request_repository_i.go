@@ -6,10 +6,14 @@ import (
 )
 
 type PendingMaterialReceiveRequestRepositoryI interface {
-	createPendingReceiveMaterialRequest(
+	CreatePendingReceiveMaterialRequest(
 		iContext context.Context,
-		iNodeIds []string,
-		iTransferTime models.CustomTime,
+		iUser models.User,
+		iToBeReceivedMaterial models.Material,
+		iRelatedMaterials []models.Material,
 		iOptions []models.SignatureOption,
+		iSenderPublicKey string,
+		iTransferTime models.CustomTime,
+		iIsOutbound bool,
 	) (models.PendingMaterialReceiveRequest, error)
 }

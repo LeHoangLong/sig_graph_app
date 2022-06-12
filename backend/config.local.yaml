@@ -13,3 +13,4 @@ DbHost: localhost
 DbPort: 5432
 DbSslmode: disable
 GraphIdPrefix: "peer_0"
+GrpcServerPort: 6000

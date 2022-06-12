@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"backend/internal/models"
+	"context"
 	"database/sql"
 )
 
@@ -18,13 +19,13 @@ func MakePeerRepositorySql(iDb *sql.DB) PeerRepositorySql {
 func (r PeerRepositorySql) FetchPeers(iUserId int) ([]models.Peer, error) {
 	response, err := r.db.Query(`
 		SELECT 
-			peer_key_peer.id, 
+			peer_key_peer.peer_id, 
 			peer_key_peer.alias, 
-			peer_key_peer.peer_key_id, 
+			public_key.id, 
 			public_key.value 
 		FROM "public_key" public_key
 		INNER JOIN (
-			SELECT peer.id, peer.alias, peer_key.id as peer_key_id, peer_key.public_key_id FROM "peer_key" peer_key
+			SELECT peer.id as peer_id, peer.alias, peer_key.public_key_id FROM "peer_key" peer_key
 			INNER JOIN (
 				SELECT id, alias, owner_id 
 				FROM "peer" 
@@ -61,6 +62,50 @@ func (r PeerRepositorySql) FetchPeers(iUserId int) ([]models.Peer, error) {
 	ret := []models.Peer{}
 	for _, v := range peerMap {
 		ret = append(ret, v)
+	}
+
+	return ret, nil
+}
+
+func (r PeerRepositorySql) FetchPeerEndPoints(
+	iContext context.Context,
+	iPeerId int,
+) ([]models.PeerEndpoint, error) {
+	result, err := r.db.QueryContext(iContext, `
+		SELECT 
+			pe.id,
+			pe.url,
+			pr.protocol
+		FROM "peer_endpoint" pe
+		INNER JOIN "supported_peer_protocol" pr
+		ON pe.peer_id = $1 AND pe.protocol_id = pr.id
+	`, iPeerId)
+
+	if err != nil {
+		return []models.PeerEndpoint{}, err
+	}
+
+	ret := []models.PeerEndpoint{}
+	for result.Next() {
+		var endpointId int
+		var endpointUrl, endpointProtocol string
+
+		err := result.Scan(
+			&endpointId,
+			&endpointUrl,
+			&endpointProtocol,
+		)
+
+		if err != nil {
+			return []models.PeerEndpoint{}, err
+		}
+
+		endpoint := models.MakePeerEndpoint(
+			endpointId,
+			endpointUrl,
+			models.PeerProtocol(endpointProtocol),
+		)
+		ret = append(ret, endpoint)
 	}
 
 	return ret, nil

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"time"
 )
@@ -38,4 +39,21 @@ func NewCustomTimeFromString(iData string) (CustomTime, error) {
 		return CustomTime{}, err
 	}
 	return CustomTime(parsed), nil
+}
+
+func (c CustomTime) Value() (driver.Value, error) {
+	return time.Time(c), nil
+}
+
+func (c *CustomTime) Scan(value interface{}) error {
+	if value == nil {
+		return fmt.Errorf("value is nil")
+	}
+
+	if time, ok := value.(time.Time); !ok {
+		return fmt.Errorf("could not parse time")
+	} else {
+		*c = CustomTime(time)
+		return nil
+	}
 }

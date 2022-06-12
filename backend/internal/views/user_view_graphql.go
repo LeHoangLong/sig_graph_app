@@ -2,7 +2,6 @@ package views
 
 import (
 	"backend/internal/controllers"
-	"backend/internal/middlewares"
 	"context"
 )
 
@@ -18,14 +17,14 @@ func (v *UserViewGraphQl) LogIn(
 	password string,
 ) (*bool, error) {
 	var ret bool
-	token, err := v.controller.LogIn(username, password)
-	if err != nil {
-		ret = false
-		return &ret, err
-	}
-
-	setter := middlewares.GetCookieSetter(ctx)
-	setter(v.loginTokenName, token, v.loginTokenMaxAge_s)
+	// token, err := v.controller.LogIn(username, password)
+	// if err != nil {
+	// 	ret = false
+	// 	return &ret, err
+	// }
+	//
+	// setter := middlewares.GetCookieSetter(ctx)
+	// setter(v.loginTokenName, token, v.loginTokenMaxAge_s)
 	ret = true
 	return &ret, nil
 }

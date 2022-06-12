@@ -2,7 +2,6 @@ package middlewares
 
 import (
 	"backend/internal/controllers"
-	"backend/internal/services"
 	"net/http"
 )
 
@@ -29,17 +28,17 @@ func (m *JwtAuthenticateMiddleware) authenticate(iCookieName string) func(http.H
 				return
 			}
 
-			username, err := m.userController.LogInWithToken(token)
-			if err != nil {
-				http.Error(w, "Invalid token", http.StatusForbidden)
-				return
-			}
-
-			// put it in context
-			ctx := services.PutUsernameInContex(r.Context(), username)
-
-			// and call the next with our new context
-			r = r.WithContext(ctx)
+			//username, err := m.userController.LogInWithToken(token)
+			//if err != nil {
+			//	http.Error(w, "Invalid token", http.StatusForbidden)
+			//	return
+			//}
+			//
+			//// put it in context
+			//ctx := services.PutUsernameInContex(r.Context(), username)
+			//
+			//// and call the next with our new context
+			//r = r.WithContext(ctx)
 			next.ServeHTTP(w, r)
 		})
 	}

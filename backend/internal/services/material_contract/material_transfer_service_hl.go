@@ -3,14 +3,13 @@ package material_contract_service
 import (
 	"backend/internal/drivers"
 	"backend/internal/models"
-	graph_id_service "backend/internal/services/graph_id"
 	"backend/internal/services/node_contract"
 	"time"
 )
 
 type MaterialTransferService struct {
 	signatureService node_contract.SignatureService
-	hasher           graph_id_service.IdHasher
+	hasher           node_contract.IdHasherI
 	driver           drivers.SmartContractDriverI
 	fetchService     MaterialFetchServiceHl
 }
@@ -24,7 +23,7 @@ func (s MaterialTransferService) TransferMaterial(
 	transferTime := models.CustomTime(time.Now())
 	newMaterialSc := makeMaterialFromModel(iMaterial)
 
-	currentHashedId := string(s.hasher.HashId(iMaterial.NodeId))
+	currentHashedId := string(s.hasher.Hash(iMaterial.NodeId))
 	newMaterialSc.PreviousNodeHashedIds[currentHashedId] = true
 	newMaterialSc.CreatedTime = transferTime
 
@@ -52,7 +51,7 @@ func (s MaterialTransferService) TransferMaterial(
 
 	transferedMaterial := iMaterial
 
-	newHashedId := string(s.hasher.HashId(iNewNodeId))
+	newHashedId := string(s.hasher.Hash(iNewNodeId))
 	iMaterial.NextNodeHashedIds[newHashedId] = true
 	iMaterial.Signature = iSenderSignature
 	iMaterial.IsFinalized = true

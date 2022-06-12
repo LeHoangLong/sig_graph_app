@@ -4,19 +4,10 @@ user:
 peers:
   - alias: peer_1
     public_keys:
-      - keys/peer_1/public_1.pem
+      - keys/peer_0/public_1.pem
     enpoints:
-      - url: http://peer_1:9053
+      - url: localhost:6000
         protocol: 
-          name: graphql
-          major: 0
-          minor: 0
-  - alias: peer_2
-    public_keys:
-      - keys/peer_2/public_1.pem
-    enpoints:
-      - url: http://peer_2:9053
-        protocol: 
-          name: graphql
+          name: grpc
           major: 0
           minor: 0

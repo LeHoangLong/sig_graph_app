@@ -8,12 +8,12 @@ import (
 	"fmt"
 )
 
-func (r *mutationResolver) CreateMaterial(ctx context.Context, iName string, iUnit string, iQuantity string) (*Material, error) {
+func (r *mutationResolver) CreateMaterial(ctx context.Context, name string, unit string, quantity string) (*Material, error) {
 	material, err := r.MaterialContractController.CreateMaterialForCurrentUser(
 		ctx,
-		iName,
-		iUnit,
-		iQuantity,
+		name,
+		unit,
+		quantity,
 	)
 
 	if err != nil {
@@ -25,8 +25,28 @@ func (r *mutationResolver) CreateMaterial(ctx context.Context, iName string, iUn
 	return &parsedMaterial, nil
 }
 
-func (r *queryResolver) Material(ctx context.Context, id string) (*Material, error) {
-	material, err := r.MaterialContractController.GetMaterialById(ctx, id)
+func (r *mutationResolver) TransferMaterial(ctx context.Context, materialID int, peerID int, peerPublicKeyID int, relatedMaterialsID []int) (*ReceiveMaterialRequestResponse, error) {
+	request, err := r.PeerMaterialController.SendRequest(
+		ctx,
+		peerID,
+		peerPublicKeyID,
+		materialID,
+		relatedMaterialsID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	parsedRequest := ParseReceiveMaterialRequestRequest(request)
+	parsedResponse := ReceiveMaterialRequestResponse{
+		Request:  &parsedRequest,
+		Accepted: true,
+	}
+	return &parsedResponse, nil
+}
+
+func (r *queryResolver) MaterialByNodeID(ctx context.Context, nodeID string) (*Material, error) {
+	material, err := r.MaterialContractController.GetMaterialByNodeId(ctx, nodeID)
 	if err != nil {
 		return nil, err
 	}

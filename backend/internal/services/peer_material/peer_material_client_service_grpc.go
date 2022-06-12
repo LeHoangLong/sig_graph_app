@@ -12,7 +12,9 @@ type PeerMaterialClientServiceGrpc struct {
 	client grpc.MaterialServiceClient
 }
 
-func MakePeerMaterialServiceGrpc(iConnection google_grpc.ClientConnInterface) PeerMaterialClientServiceGrpc {
+func MakePeerMaterialClientServiceGrpc(
+	iConnection google_grpc.ClientConnInterface,
+) PeerMaterialClientServiceGrpc {
 	return PeerMaterialClientServiceGrpc{
 		client: grpc.NewMaterialServiceClient(iConnection),
 	}
@@ -23,7 +25,7 @@ func convertOptionToGrpcOption(
 ) *grpc.SignatureOption {
 	return &grpc.SignatureOption{
 		NodeId:    iOption.NodeId,
-		Signature: iOption.Signature,
+		Signature: []byte(iOption.Signature),
 	}
 }
 
@@ -51,9 +53,11 @@ func convertReceiverMaterialRequestToGrpc(
 	}
 
 	return &grpc.ReceiveMaterialRequestRequest{
+		RecipientPublicKey:     iRequest.RecipientPublicKey,
 		MainNodeId:             iRequest.MainNodeId,
 		TransferTime:           timestamppb.New(iRequest.TransferTime),
 		SenderSignatureOptions: grpcOptions,
+		SenderPublicKey:        iRequest.SenderPublicKey,
 		Nodes:                  grpcNodes,
 	}
 }

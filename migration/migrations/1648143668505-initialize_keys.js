@@ -113,6 +113,12 @@ module.exports.down = async function (next) {
   await client.connect()
   try {
     await client.query('BEGIN')
+    await client.query(`DELETE FROM "peer_endpoint"`)
+    await client.query(`DELETE FROM "peer_key"`)
+    await client.query(`DELETE FROM "public_key"`)
+    await client.query(`DELETE FROM "peer"`)
+    await client.query(`DELETE FROM "user_key"`)
+    await client.query(`DELETE FROM "public_key"`)
     await client.query('COMMIT')
   } catch (exception) {
     await client.query('ROLLBACK')

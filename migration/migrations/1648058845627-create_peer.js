@@ -24,17 +24,15 @@ module.exports.up = async function (next) {
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS "peer_key" (
-        id SERIAL PRIMARY KEY,
-        owner_id INTEGER REFERENCES "peer"(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL,
-        public_key_id INTEGER REFERENCES "public_key"(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL UNIQUE
+        public_key_id INTEGER PRIMARY KEY REFERENCES "public_key"(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL UNIQUE,
+        owner_id INTEGER REFERENCES "peer"(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL
       )
     `)
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS "user_key" (
-        id SERIAL PRIMARY KEY,
+        public_key_id INTEGER PRIMARY KEY REFERENCES "public_key"(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL UNIQUE,
         owner_id INTEGER REFERENCES "user"(id) ON DELETE CASCADE ON UPDATE CASCADE,
-        public_key_id INTEGER REFERENCES "public_key"(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL UNIQUE,
         private_key TEXT NOT NULL,
         is_default BOOLEAN NOT NULL
       )
@@ -78,7 +76,7 @@ module.exports.up = async function (next) {
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS "material" (
-        node_id INTEGER PRIMARY KEY REFERENCES "node"(id),
+        node_id INTEGER PRIMARY KEY REFERENCES "node"(id) ON DELETE CASCADE ON UPDATE CASCADE,
         name TEXT NOT NULL,
         quantity DECIMAL NOT NULL,
         unit TEXT NOT NULL
@@ -108,7 +106,7 @@ module.exports.up = async function (next) {
         major_version,
         minor_version
       ) VALUES (
-        'graphql',
+        'grpc',
         0,
         0
       )

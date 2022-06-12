@@ -12,20 +12,23 @@ service MaterialService {
 
 message Node {
     string id = 1;  
+    string type = 2;
     repeated string children_node_ids = 3;
     repeated string parent_node_ids = 4;
 }
 
 message SignatureOption {
     string node_id = 1;
-    string signature = 2;
+    bytes signature = 2;
 }
 
 message ReceiveMaterialRequestRequest {
+    string recipient_public_key = 1;
     string main_node_id = 2;
     google.protobuf.Timestamp transfer_time = 3;  
     repeated SignatureOption sender_signature_options = 4; /// multiple signatures as backup
     map<string, Node> nodes = 5; /// key is node id
+    string sender_public_key = 6;
 }
 
 message ReceiveMaterialRequestResponse {
