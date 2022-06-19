@@ -20,17 +20,29 @@ func ParseReceiveMaterialRequestRequest(
 		TransferMaterial: &parsedMainMaterial,
 		ExposedMaterials: exposedMaterials,
 		TransferTime:     time.Time(iRequest.TransferTime),
+		SenderPublicKey:  iRequest.SenderPublicKey,
 	}
 }
 
 func ParseMaterial(iMaterial models.Material) Material {
+	previousNodeHashedIds := []*string{}
+	for previousNodeHashedId := range iMaterial.PreviousNodeHashedIds {
+		previousNodeHashedIds = append(previousNodeHashedIds, &previousNodeHashedId)
+	}
+	nextNodeHashedIds := []*string{}
+	for nextNodeHashedId := range iMaterial.PreviousNodeHashedIds {
+		nextNodeHashedIds = append(nextNodeHashedIds, &nextNodeHashedId)
+	}
 	return Material{
-		ID:          *iMaterial.Id,
-		NodeID:      iMaterial.NodeId,
-		Name:        iMaterial.Name,
-		Unit:        iMaterial.Unit,
-		Quantity:    iMaterial.Quantity.String(),
-		CreatedTime: time.Time(iMaterial.CreatedTime),
+		ID:                     *iMaterial.Id,
+		NodeID:                 iMaterial.NodeId,
+		Name:                   iMaterial.Name,
+		Unit:                   iMaterial.Unit,
+		Quantity:               iMaterial.Quantity.String(),
+		CreatedTime:            time.Time(iMaterial.CreatedTime),
+		OwnerPublicKey:         iMaterial.OwnerPublicKey.Value,
+		PreviousNodesHashedIds: previousNodeHashedIds,
+		NextNodesHashedIds:     nextNodeHashedIds,
 	}
 }
 

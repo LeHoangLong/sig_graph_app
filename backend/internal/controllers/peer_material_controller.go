@@ -307,3 +307,14 @@ func (c *PeerMaterialController) SendRequest(
 
 	return request, nil
 }
+
+func (c *PeerMaterialController) FetchReceivedPendingMaterialReceiveRequests(
+	iContext context.Context,
+	iSenderId int,
+) ([]models.PendingMaterialReceiveRequest, error) {
+	return c.pendingMaterialReceiveRequestRepositoryService.FetchPendingReceiveMaterialRequestsByUser(
+		iContext,
+		iSenderId,
+		false,
+	)
+}

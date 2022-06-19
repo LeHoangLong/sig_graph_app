@@ -43,3 +43,58 @@ func (s *PendingReceiveMaterialRequestRepositoryService) SavePendingReceiveMater
 		iIsOutbound,
 	)
 }
+
+func (s *PendingReceiveMaterialRequestRepositoryService) FetchPendingReceiveMaterialRequestsByUser(
+	iContext context.Context,
+	iUserId int,
+	iIsOutbound bool,
+) ([]models.PendingMaterialReceiveRequest, error) {
+	simplifiedRequests, err := s.pendingReceiveMaterialRequestRepository.FetchPendingReceiveMaterialRequestsByUserId(
+		iContext,
+		iUserId,
+		iIsOutbound,
+	)
+
+	if err != nil {
+		return []models.PendingMaterialReceiveRequest{}, err
+	}
+
+	materialsIdToFetch := map[int]bool{}
+	for _, request := range simplifiedRequests {
+		materialsIdToFetch[request.ToBeReceivedMaterialId] = true
+		for relatedMaterialId := range request.RelatedMaterialIds {
+			materialsIdToFetch[relatedMaterialId] = true
+		}
+	}
+
+	materials, err := s.materialRepository.FetchMaterialsById(
+		iContext,
+		materialsIdToFetch,
+	)
+
+	if err != nil {
+		return []models.PendingMaterialReceiveRequest{}, err
+	}
+
+	requests := []models.PendingMaterialReceiveRequest{}
+	for _, request := range simplifiedRequests {
+		relatedMaterials := []models.Material{}
+		for _, id := range request.RelatedMaterialIds {
+			relatedMaterials = append(relatedMaterials, materials[id])
+		}
+
+		pendingRequest := models.MakePendingMaterialReceiveRequest(
+			request.Id,
+			request.RecipientId,
+			materials[request.ToBeReceivedMaterialId],
+			relatedMaterials,
+			request.SignatureOptions,
+			request.SenderPublicKey,
+			request.TransferTime,
+		)
+
+		requests = append(requests, pendingRequest)
+	}
+
+	return requests, nil
+}

@@ -4,6 +4,7 @@ package graphql
 // will be copied through when generating and any unknown code will be moved to the end.
 
 import (
+	"backend/internal/services"
 	"context"
 	"fmt"
 )
@@ -87,6 +88,27 @@ func (r *queryResolver) Peers(ctx context.Context) ([]*Peer, error) {
 	return ret, nil
 }
 
+func (r *queryResolver) PendingReceivedTransferMaterialRequests(ctx context.Context) ([]*ReceiveMaterialRequestRequest, error) {
+	senderId, err := services.GetCurrentUserFromContext(ctx)
+	if err != nil {
+		return []*ReceiveMaterialRequestRequest{}, err
+	}
+	requests, err := r.PeerMaterialController.FetchReceivedPendingMaterialReceiveRequests(
+		ctx,
+		senderId,
+	)
+	if err != nil {
+		return []*ReceiveMaterialRequestRequest{}, err
+	}
+	parsedRequests := []*ReceiveMaterialRequestRequest{}
+	for i := range requests {
+		parsedRequest := ParseReceiveMaterialRequestRequest(requests[i])
+		parsedRequests = append(parsedRequests, &parsedRequest)
+	}
+
+	return parsedRequests, nil
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
@@ -95,3 +117,28 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+func (r *queryResolver) ReceivedTransferMaterialRequests(ctx context.Context) ([]*ReceiveMaterialRequestRequest, error) {
+	userId, err := services.GetCurrentUserFromContext(ctx)
+	if err != nil {
+		return []*ReceiveMaterialRequestRequest{}, nil
+	}
+	requests, err := r.PeerMaterialController.FetchReceivedPendingMaterialReceiveRequests(
+		ctx,
+		userId,
+	)
+
+	parsedRequests := []*ReceiveMaterialRequestRequest{}
+	for i := range requests {
+		parsedRequest := ParseReceiveMaterialRequestRequest(requests[i])
+		parsedRequests = append(parsedRequests, &parsedRequest)
+	}
+
+	return parsedRequests, nil
+}

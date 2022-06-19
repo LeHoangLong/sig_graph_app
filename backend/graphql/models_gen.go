@@ -7,12 +7,15 @@ import (
 )
 
 type Material struct {
-	ID          int       `json:"Id"`
-	NodeID      string    `json:"NodeId"`
-	Name        string    `json:"Name"`
-	Unit        string    `json:"Unit"`
-	Quantity    string    `json:"Quantity"`
-	CreatedTime time.Time `json:"CreatedTime"`
+	ID                     int       `json:"Id"`
+	NodeID                 string    `json:"NodeId"`
+	Name                   string    `json:"Name"`
+	Unit                   string    `json:"Unit"`
+	Quantity               string    `json:"Quantity"`
+	CreatedTime            time.Time `json:"CreatedTime"`
+	OwnerPublicKey         string    `json:"OwnerPublicKey"`
+	PreviousNodesHashedIds []*string `json:"PreviousNodesHashedIds"`
+	NextNodesHashedIds     []*string `json:"NextNodesHashedIds"`
 }
 
 type MaterialGraph struct {
@@ -35,6 +38,7 @@ type ReceiveMaterialRequestRequest struct {
 	TransferMaterial *Material   `json:"TransferMaterial"`
 	ExposedMaterials []*Material `json:"ExposedMaterials"`
 	TransferTime     time.Time   `json:"TransferTime"`
+	SenderPublicKey  string      `json:"SenderPublicKey"`
 }
 
 type ReceiveMaterialRequestResponse struct {

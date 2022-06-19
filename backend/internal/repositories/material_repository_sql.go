@@ -161,3 +161,88 @@ func (r MaterialRepositorySql) FetchMaterialById(
 	)
 	return material, nil
 }
+
+func (r MaterialRepositorySql) FetchMaterialsById(
+	iContext context.Context,
+	iIds map[int]bool,
+) (map[int]models.Material, error) {
+	ids := []int{}
+	for id := range iIds {
+		ids = append(ids, id)
+	}
+	nodes, err := r.nodeRepository.FetchNodesById(ids)
+	if err != nil {
+		return map[int]models.Material{}, err
+	}
+
+	if len(nodes) == 0 {
+		return map[int]models.Material{}, nil
+	}
+
+	nodeMap := map[int]models.Node{}
+
+	argString := []string{}
+	arg := []interface{}{}
+	count := 1
+	for index := range nodes {
+		nodeMap[*nodes[index].Id] = nodes[index]
+		argString = append(argString, fmt.Sprintf("(node_id=$%d)", count))
+		arg = append(arg, *nodes[index].Id)
+		count++
+	}
+
+	query := `
+		SELECT 
+			node_id,
+			name,
+			quantity,
+			unit
+		FROM "material"
+		WHERE 
+	`
+
+	query += strings.Join(argString, " OR ")
+	response, err := r.db.QueryContext(
+		iContext,
+		query,
+		arg...,
+	)
+
+	if err != nil {
+		return map[int]models.Material{}, nil
+	}
+
+	fmt.Println("nodeMap")
+	fmt.Println(nodeMap)
+	fmt.Println(ids)
+	materials := map[int]models.Material{}
+	for response.Next() {
+		nodeId := 0
+		name := ""
+		quantity := models.CustomDecimal{}
+		unit := ""
+		err := response.Scan(
+			&nodeId,
+			&name,
+			&quantity,
+			&unit,
+		)
+
+		if err != nil {
+			return map[int]models.Material{}, nil
+		}
+
+		material := models.NewMaterial(
+			nodeMap[nodeId],
+			name,
+			quantity,
+			unit,
+		)
+
+		fmt.Println("nodeId: ", nodeId)
+		fmt.Printf("material: %+v\n", material)
+		materials[*material.Id] = material
+	}
+
+	return materials, nil
+}

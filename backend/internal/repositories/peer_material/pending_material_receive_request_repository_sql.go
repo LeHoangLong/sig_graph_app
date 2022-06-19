@@ -132,3 +132,167 @@ func (r PendingMaterialReceiveRequestRepositorySql) CreatePendingReceiveMaterial
 
 	return ret, err
 }
+
+func (r PendingMaterialReceiveRequestRepositorySql) FetchPendingReceiveMaterialRequestsByUserId(
+	iContext context.Context,
+	iUserId int,
+	iIsOutbound bool,
+) ([]SimplifiedPendingReceiveMaterialRequest, error) {
+	response, err := r.db.Query(`
+		SELECT 
+			request.id,
+			request.transfer_time,
+			request.sender_public_key,
+			request.main_node_id
+		FROM "pending_receive_material_request" request
+		WHERE request.owner_id=$1 AND request.is_outbound=$2
+	`, iUserId, iIsOutbound)
+
+	if err != nil {
+		return []SimplifiedPendingReceiveMaterialRequest{}, err
+	}
+	defer response.Close()
+
+	type RequestInfo struct {
+		requestId       int
+		senderPublicKey string
+		transferTime    models.CustomTime
+		mainMaterialId  int
+	}
+
+	fetchedRequests := map[int]RequestInfo{}
+
+	for response.Next() {
+		request := RequestInfo{}
+		err := response.Scan(
+			&request.requestId,
+			&request.transferTime,
+			&request.senderPublicKey,
+			&request.mainMaterialId,
+		)
+		if err != nil {
+			return []SimplifiedPendingReceiveMaterialRequest{}, err
+		}
+
+		fetchedRequests[request.requestId] = request
+	}
+
+	if len(fetchedRequests) == 0 {
+		return []SimplifiedPendingReceiveMaterialRequest{}, nil
+	}
+
+	relatedMaterialIdsMap := map[int][]int{}
+	{
+		/// fetch nodes from peer
+		argStr := []string{}
+		arg := []interface{}{}
+		count := 1
+		for id := range fetchedRequests {
+			argStr = append(argStr, fmt.Sprintf("(pending_receive_material_request_id=$%d)", count))
+			arg = append(arg, id)
+			count++
+		}
+		query := `
+			SELECT 
+				node_id,
+				pending_receive_material_request_id
+			FROM "node_from_peer"
+			WHERE 
+		`
+		query += strings.Join(argStr, " OR ")
+		response, err := r.db.Query(query, arg...)
+		if err != nil {
+			return []SimplifiedPendingReceiveMaterialRequest{}, nil
+		}
+		defer response.Close()
+		for response.Next() {
+			nodeId := 0
+			pendingReceiveMaterialRequestId := 0
+			err := response.Scan(
+				&nodeId,
+				&pendingReceiveMaterialRequestId,
+			)
+			if err != nil {
+				return []SimplifiedPendingReceiveMaterialRequest{}, nil
+			}
+
+			if _, ok := relatedMaterialIdsMap[pendingReceiveMaterialRequestId]; ok {
+				relatedMaterialIdsMap[pendingReceiveMaterialRequestId] = []int{}
+			}
+			relatedMaterialIdsMap[pendingReceiveMaterialRequestId] = append(relatedMaterialIdsMap[pendingReceiveMaterialRequestId], nodeId)
+		}
+	}
+
+	signatureOptionsMap := map[int][]models.SignatureOption{}
+	{
+		/// fetch nodes from peer
+		argStr := []string{}
+		arg := []interface{}{}
+		count := 1
+		for id := range fetchedRequests {
+			argStr = append(argStr, fmt.Sprintf("(pending_request_id=$%d)", count))
+			arg = append(arg, id)
+			count++
+		}
+		query := `
+			SELECT 
+				signature,
+				new_node_id,
+				pending_request_id
+			FROM "signature_option"
+			WHERE 
+		`
+		query += strings.Join(argStr, " OR ")
+		response, err := r.db.Query(query, arg...)
+		if err != nil {
+			return []SimplifiedPendingReceiveMaterialRequest{}, nil
+		}
+		defer response.Close()
+		for response.Next() {
+			signature := ""
+			newNodeId := ""
+			pendingRequestId := 0
+			err := response.Scan(
+				&signature,
+				&newNodeId,
+				&pendingRequestId,
+			)
+			if err != nil {
+				return []SimplifiedPendingReceiveMaterialRequest{}, nil
+			}
+
+			if _, ok := signatureOptionsMap[pendingRequestId]; ok {
+				signatureOptionsMap[pendingRequestId] = []models.SignatureOption{}
+			}
+			signatureOption := models.MakeSignatureOption(newNodeId, signature)
+			signatureOptionsMap[pendingRequestId] = append(signatureOptionsMap[pendingRequestId], signatureOption)
+		}
+	}
+
+	ret := []SimplifiedPendingReceiveMaterialRequest{}
+	for requestId := range fetchedRequests {
+		relatedMaterialIds := []int{}
+		if fetchedRelatedMaterialIds, ok := relatedMaterialIdsMap[requestId]; ok {
+			relatedMaterialIds = fetchedRelatedMaterialIds
+		}
+
+		signatureOptions := []models.SignatureOption{}
+		if fetchedSignatureOptions, ok := signatureOptionsMap[requestId]; ok {
+			signatureOptions = fetchedSignatureOptions
+		}
+
+		request := makeSimplifiedPendingReceiveMaterialRequest(
+			requestId,
+			iUserId,
+			fetchedRequests[requestId].mainMaterialId,
+			relatedMaterialIds,
+			signatureOptions,
+			fetchedRequests[requestId].senderPublicKey,
+			fetchedRequests[requestId].transferTime,
+		)
+
+		ret = append(ret, request)
+	}
+
+	return ret, nil
+}

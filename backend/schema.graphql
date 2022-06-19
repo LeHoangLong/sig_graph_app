@@ -7,6 +7,9 @@ type Material {
   Unit: String!,
   Quantity: String!,
   CreatedTime: Time!,
+  OwnerPublicKey: String!,
+  PreviousNodesHashedIds: [String]!,
+  NextNodesHashedIds: [String]!,
 }
 
 type PublicKey {
@@ -29,6 +32,7 @@ type ReceiveMaterialRequestRequest {
   TransferMaterial: Material!,
   ExposedMaterials: [Material]!,
   TransferTime: Time!,
+  SenderPublicKey: String!,
 }
 
 type ReceiveMaterialRequestResponse {
@@ -54,4 +58,5 @@ type Query {
   materialByNodeId(nodeId: String!): Material
   materials: [Material!]!
   peers: [Peer!]!
+  pendingReceivedTransferMaterialRequests: [ReceiveMaterialRequestRequest]!
 }
