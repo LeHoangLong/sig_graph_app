@@ -1,7 +1,6 @@
 package drivers
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -50,14 +49,12 @@ func (d HLIdentityService) CreateX509CertificateFromFiles(
 func (d HLIdentityService) createX509Certificate(
 	iUsername Username,
 ) (*gateway.X509Identity, error) {
-	fmt.Printf("d.client: %+v\n", d.client)
 	secret, err := d.client.Register(
 		&msp.RegistrationRequest{
 			Name: string(iUsername),
 		},
 	)
 
-	fmt.Println("f")
 	if err != nil {
 		return nil, err
 	}
@@ -67,24 +64,20 @@ func (d HLIdentityService) createX509Certificate(
 		msp.WithSecret(secret),
 	)
 
-	fmt.Println("e")
 	if err != nil {
 		return nil, err
 	}
 
 	identity, err := d.client.GetSigningIdentity(string(iUsername))
-	fmt.Println("a")
 	if err != nil {
 		return nil, err
 	}
 
 	privateKey, err := identity.PrivateKey().Bytes()
-	fmt.Println("b")
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("c")
 	x509Identity := gateway.NewX509Identity(
 		identity.PublicVersion().Identifier().MSPID,
 		string(identity.PublicVersion().EnrollmentCertificate()),

@@ -1,13 +1,14 @@
 package models
 
+type UserId int
 type User struct {
-	Id           int    `json:"id"`
+	Id           UserId `json:"id"`
 	Username     string `json:"username"`
 	PasswordHash string `json:"password_hash"`
 }
 
 func MakeUser(
-	iId int,
+	iId UserId,
 	iUsername string,
 	iPasswordHash string,
 ) User {

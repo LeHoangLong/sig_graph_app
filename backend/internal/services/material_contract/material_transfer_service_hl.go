@@ -11,7 +11,21 @@ type MaterialTransferService struct {
 	signatureService node_contract.SignatureService
 	hasher           node_contract.IdHasherI
 	driver           drivers.SmartContractDriverI
-	fetchService     MaterialFetchServiceHl
+	fetchService     MaterialFetchServiceI
+}
+
+func MakeMaterialTransferServiceHl(
+	iSignatureService node_contract.SignatureService,
+	iHasher node_contract.IdHasherI,
+	iDriver drivers.SmartContractDriverI,
+	iFetchService MaterialFetchServiceI,
+) MaterialTransferService {
+	return MaterialTransferService{
+		signatureService: iSignatureService,
+		hasher:           iHasher,
+		driver:           iDriver,
+		fetchService:     iFetchService,
+	}
 }
 
 func (s MaterialTransferService) TransferMaterial(

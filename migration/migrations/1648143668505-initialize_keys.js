@@ -16,6 +16,7 @@ module.exports.up = async function (next) {
       SELECT id FROM "user" WHERE username = 'test'
     `)
 
+    const userId = userResponse.rows[0].id
     const publicKeyFile = fs.readFileSync(config.user.public_key, 'utf-8')
     const privateKeyFile = fs.readFileSync(config.user.private_key, 'utf-8')
 
@@ -39,7 +40,7 @@ module.exports.up = async function (next) {
         $3,
         TRUE
       )
-    `, [userResponse.rows[0].id, publicKeyResponse.rows[0].id, privateKeyFile])
+    `, [userId, publicKeyResponse.rows[0].id, privateKeyFile])
       
     for (const [index, peer] of config.peers.entries()) {
       const peerResponse = await client.query(`
@@ -50,7 +51,7 @@ module.exports.up = async function (next) {
           $1,
           $2
         ) RETURNING id
-      `, [userResponse.rows[0].id, peer.alias ?? ('peer_' + index)])
+      `, [userId, peer.alias ?? ('peer_' + index)])
 
       const peerId = peerResponse.rows[0].id
       for (const key of peer.public_keys) {
@@ -65,13 +66,15 @@ module.exports.up = async function (next) {
 
         await client.query(`
           INSERT INTO "peer_key" (
-            owner_id,
+            user_id,
+            peer_id,
             public_key_id
           ) VALUES (
             $1,
-            $2
+            $2,
+            $3
           )
-        `, [peerId, publicKeyResponse.rows[0].id])
+        `, [userId, peerId, publicKeyResponse.rows[0].id])
       }
 
       for (const endpoint of peer.enpoints) {

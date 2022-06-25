@@ -85,7 +85,7 @@ func (r NodeRepositorySql) CreateNode(iNode models.Node) (models.Node, error) {
 		return models.Node{}, fmt.Errorf("no result from creating node")
 	}
 
-	var id int
+	var id models.NodeId
 	result.Scan(&id)
 	result.Close()
 
@@ -122,18 +122,18 @@ func (r NodeRepositorySql) CreateNode(iNode models.Node) (models.Node, error) {
 	return ret, nil
 }
 
-func (r NodeRepositorySql) FetchChildrenIdOfNode(iId int) (map[int]bool, error) {
+func (r NodeRepositorySql) FetchChildrenIdOfNode(iId models.NodeId) (map[models.NodeId]bool, error) {
 	result, err := r.db.Query(`
 		SELECT dst_node_id FROM "node_edge" WHERE src_node_id=$1
 	`, iId)
 
 	if err != nil {
-		return map[int]bool{}, nil
+		return map[models.NodeId]bool{}, nil
 	}
 
-	ret := map[int]bool{}
+	ret := map[models.NodeId]bool{}
 	for result.Next() {
-		var childNodeId int
+		var childNodeId models.NodeId
 		result.Scan(&childNodeId)
 		ret[childNodeId] = true
 	}
@@ -141,18 +141,18 @@ func (r NodeRepositorySql) FetchChildrenIdOfNode(iId int) (map[int]bool, error) 
 	return ret, nil
 }
 
-func (r NodeRepositorySql) FetchParentIdOfNode(iId int) (map[int]bool, error) {
+func (r NodeRepositorySql) FetchParentIdOfNode(iId models.NodeId) (map[models.NodeId]bool, error) {
 	result, err := r.db.Query(`
 		SELECT src_node_id FROM "node_edge" WHERE dst_node_id=$1
 	`, iId)
 
 	if err != nil {
-		return map[int]bool{}, nil
+		return map[models.NodeId]bool{}, nil
 	}
 
-	ret := map[int]bool{}
+	ret := map[models.NodeId]bool{}
 	for result.Next() {
-		var childNodeId int
+		var childNodeId models.NodeId
 		result.Scan(&childNodeId)
 		ret[childNodeId] = true
 	}
@@ -160,7 +160,10 @@ func (r NodeRepositorySql) FetchParentIdOfNode(iId int) (map[int]bool, error) {
 	return ret, nil
 }
 
-func (r NodeRepositorySql) FetchNodesById(iId []int) ([]models.Node, error) {
+func (r NodeRepositorySql) FetchNodesById(iId []models.NodeId) ([]models.Node, error) {
+	if len(iId) == 0 {
+		return []models.Node{}, nil
+	}
 	statement := `
 		SELECT 
 			n.id,
@@ -198,13 +201,13 @@ func (r NodeRepositorySql) FetchNodesById(iId []int) ([]models.Node, error) {
 	ret := []models.Node{}
 	for result.Next() {
 		node := models.Node{
-			Id:                    new(int),
+			Id:                    new(models.NodeId),
 			PreviousNodeHashedIds: map[string]bool{},
 			NextNodeHashedIds:     map[string]bool{},
-			ParentIds:             map[int]bool{},
-			ChildrenIds:           map[int]bool{},
+			ParentIds:             map[models.NodeId]bool{},
+			ChildrenIds:           map[models.NodeId]bool{},
 		}
-		var publicKeyId int
+		var publicKeyId models.PublicKeyId
 		var publicKeyValue string
 		var previousNodeHashedIds, nextNodeHashedIds []string
 		err := result.Scan(

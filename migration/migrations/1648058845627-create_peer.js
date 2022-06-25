@@ -25,7 +25,8 @@ module.exports.up = async function (next) {
     await client.query(`
       CREATE TABLE IF NOT EXISTS "peer_key" (
         public_key_id INTEGER PRIMARY KEY REFERENCES "public_key"(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL UNIQUE,
-        owner_id INTEGER REFERENCES "peer"(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL
+        user_id INTEGER REFERENCES "user"(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL,
+        peer_id INTEGER REFERENCES "peer"(id) ON DELETE CASCADE ON UPDATE CASCADE
       )
     `)
 

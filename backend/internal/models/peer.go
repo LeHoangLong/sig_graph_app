@@ -1,13 +1,14 @@
 package models
 
+type PeerId int
 type Peer struct {
-	Id        int
+	Id        PeerId
 	Alias     string
 	PublicKey []PublicKey
 }
 
 func MakePeer(
-	iId int,
+	iId PeerId,
 	iAlias string,
 	iPublicKey []PublicKey,
 ) Peer {

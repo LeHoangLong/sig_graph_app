@@ -3,6 +3,9 @@
 package graphql
 
 import (
+	"fmt"
+	"io"
+	"strconv"
 	"time"
 )
 
@@ -35,13 +38,58 @@ type PublicKey struct {
 }
 
 type ReceiveMaterialRequestRequest struct {
-	TransferMaterial *Material   `json:"TransferMaterial"`
-	ExposedMaterials []*Material `json:"ExposedMaterials"`
-	TransferTime     time.Time   `json:"TransferTime"`
-	SenderPublicKey  string      `json:"SenderPublicKey"`
+	ID                int                                 `json:"Id"`
+	TransferMaterial  *Material                           `json:"TransferMaterial"`
+	ExposedMaterials  []*Material                         `json:"ExposedMaterials"`
+	TransferTime      time.Time                           `json:"TransferTime"`
+	SenderPublicKeyID int                                 `json:"SenderPublicKeyId"`
+	Status            ReceiveMaterialRequestRequestStatus `json:"Status"`
 }
 
 type ReceiveMaterialRequestResponse struct {
 	Accepted bool                           `json:"Accepted"`
 	Request  *ReceiveMaterialRequestRequest `json:"Request"`
+}
+
+type ReceiveMaterialRequestRequestStatus string
+
+const (
+	ReceiveMaterialRequestRequestStatusPending  ReceiveMaterialRequestRequestStatus = "PENDING"
+	ReceiveMaterialRequestRequestStatusAccepted ReceiveMaterialRequestRequestStatus = "ACCEPTED"
+	ReceiveMaterialRequestRequestStatusRejected ReceiveMaterialRequestRequestStatus = "REJECTED"
+)
+
+var AllReceiveMaterialRequestRequestStatus = []ReceiveMaterialRequestRequestStatus{
+	ReceiveMaterialRequestRequestStatusPending,
+	ReceiveMaterialRequestRequestStatusAccepted,
+	ReceiveMaterialRequestRequestStatusRejected,
+}
+
+func (e ReceiveMaterialRequestRequestStatus) IsValid() bool {
+	switch e {
+	case ReceiveMaterialRequestRequestStatusPending, ReceiveMaterialRequestRequestStatusAccepted, ReceiveMaterialRequestRequestStatusRejected:
+		return true
+	}
+	return false
+}
+
+func (e ReceiveMaterialRequestRequestStatus) String() string {
+	return string(e)
+}
+
+func (e *ReceiveMaterialRequestRequestStatus) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ReceiveMaterialRequestRequestStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ReceiveMaterialRequestRequestStatus", str)
+	}
+	return nil
+}
+
+func (e ReceiveMaterialRequestRequestStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
 }

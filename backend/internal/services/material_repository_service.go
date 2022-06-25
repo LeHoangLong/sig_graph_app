@@ -79,7 +79,7 @@ func (s MaterialRepositoryService) FetchMaterialsOfUser(
 }
 
 func (s MaterialRepositoryService) DoesMaterialBelongToUser(
-	iUserId int,
+	iUserId models.UserId,
 	iMaterial models.Material,
 ) (bool, error) {
 
@@ -114,14 +114,14 @@ func (s *MaterialRepositoryService) SaveMaterials(
 
 func (s *MaterialRepositoryService) FetchMaterialById(
 	iContext context.Context,
-	iMaterialId int,
+	iMaterialId models.NodeId,
 ) (models.Material, error) {
 	return s.materialRepository.FetchMaterialById(iContext, iMaterialId)
 }
 
 func (s *MaterialRepositoryService) FetchMaterialsAndRelated(
 	iContext context.Context,
-	iMainMaterialId int,
+	iMainMaterialId models.NodeId,
 ) (models.Material, []models.Material, error) {
 	mainMaterial, err := s.materialRepository.FetchMaterialById(iContext, iMainMaterialId)
 	if err != nil {
@@ -138,7 +138,7 @@ func (s *MaterialRepositoryService) FetchMaterialsAndRelated(
 	relatedMaterial := []models.Material{}
 	for list.Len() > 0 {
 		id := list.Front()
-		material, err := s.materialRepository.FetchMaterialById(iContext, id.Value.(int))
+		material, err := s.materialRepository.FetchMaterialById(iContext, id.Value.(models.NodeId))
 		if err != nil {
 			return models.Material{}, []models.Material{}, nil
 		}

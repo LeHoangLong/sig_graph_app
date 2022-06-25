@@ -5,7 +5,7 @@ import "backend/internal/models"
 func GenerateNodesFromMaterials(
 	iMaterials []models.Material,
 ) []Node {
-	temp := map[int]models.Material{}
+	temp := map[models.NodeId]models.Material{}
 	for _, material := range iMaterials {
 		temp[*material.Id] = material
 	}

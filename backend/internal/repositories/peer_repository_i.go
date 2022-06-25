@@ -6,6 +6,7 @@ import (
 )
 
 type PeerRepositoryI interface {
-	FetchPeers(iUserId int) ([]models.Peer, error)
-	FetchPeerEndPoints(iContext context.Context, iPeerId int) ([]models.PeerEndpoint, error)
+	FetchPeers(iUserId models.UserId) ([]models.Peer, error)
+	FetchPeerEndPoints(iContext context.Context, iPeerId models.PeerId) ([]models.PeerEndpoint, error)
+	FetchPeerByKeyId(iContext context.Context, iPublicKeyId models.PublicKeyId) (models.Peer, error)
 }

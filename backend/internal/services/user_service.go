@@ -46,6 +46,6 @@ func (s UserService) FindUserWithPublicKey(iPublicKey string) (models.User, erro
 	return s.repository.FindUserWithPublicKey(iPublicKey)
 }
 
-func (s UserService) GetUserById(iContext context.Context, iId int) (models.User, error) {
+func (s UserService) GetUserById(iContext context.Context, iId models.UserId) (models.User, error) {
 	return s.repository.GetUserById(iContext, iId)
 }

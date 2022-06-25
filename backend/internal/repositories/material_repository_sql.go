@@ -90,9 +90,6 @@ func (r MaterialRepositorySql) FetchMaterialsByOwner(
 		statement += strings.Join(argsClause, " OR ")
 	}
 
-	fmt.Println("statement")
-	fmt.Println(statement)
-
 	rows, err := r.db.Query(statement, args...)
 	if err != nil {
 		return []models.Material{}, err
@@ -119,9 +116,9 @@ func (r MaterialRepositorySql) FetchMaterialsByOwner(
 
 func (r MaterialRepositorySql) FetchMaterialById(
 	iContext context.Context,
-	iId int,
+	iId models.NodeId,
 ) (models.Material, error) {
-	nodes, err := r.nodeRepository.FetchNodesById([]int{iId})
+	nodes, err := r.nodeRepository.FetchNodesById([]models.NodeId{models.NodeId(iId)})
 	if err != nil {
 		return models.Material{}, err
 	}
@@ -164,22 +161,22 @@ func (r MaterialRepositorySql) FetchMaterialById(
 
 func (r MaterialRepositorySql) FetchMaterialsById(
 	iContext context.Context,
-	iIds map[int]bool,
-) (map[int]models.Material, error) {
-	ids := []int{}
+	iIds map[models.NodeId]bool,
+) (map[models.NodeId]models.Material, error) {
+	ids := []models.NodeId{}
 	for id := range iIds {
 		ids = append(ids, id)
 	}
 	nodes, err := r.nodeRepository.FetchNodesById(ids)
 	if err != nil {
-		return map[int]models.Material{}, err
+		return map[models.NodeId]models.Material{}, err
 	}
 
 	if len(nodes) == 0 {
-		return map[int]models.Material{}, nil
+		return map[models.NodeId]models.Material{}, nil
 	}
 
-	nodeMap := map[int]models.Node{}
+	nodeMap := map[models.NodeId]models.Node{}
 
 	argString := []string{}
 	arg := []interface{}{}
@@ -209,15 +206,12 @@ func (r MaterialRepositorySql) FetchMaterialsById(
 	)
 
 	if err != nil {
-		return map[int]models.Material{}, nil
+		return map[models.NodeId]models.Material{}, nil
 	}
 
-	fmt.Println("nodeMap")
-	fmt.Println(nodeMap)
-	fmt.Println(ids)
-	materials := map[int]models.Material{}
+	materials := map[models.NodeId]models.Material{}
 	for response.Next() {
-		nodeId := 0
+		nodeId := models.NodeId(0)
 		name := ""
 		quantity := models.CustomDecimal{}
 		unit := ""
@@ -229,7 +223,7 @@ func (r MaterialRepositorySql) FetchMaterialsById(
 		)
 
 		if err != nil {
-			return map[int]models.Material{}, nil
+			return map[models.NodeId]models.Material{}, nil
 		}
 
 		material := models.NewMaterial(
@@ -239,8 +233,6 @@ func (r MaterialRepositorySql) FetchMaterialsById(
 			unit,
 		)
 
-		fmt.Println("nodeId: ", nodeId)
-		fmt.Printf("material: %+v\n", material)
 		materials[*material.Id] = material
 	}
 

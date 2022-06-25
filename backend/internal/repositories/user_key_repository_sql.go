@@ -17,7 +17,7 @@ func MakeUserKeyRepositorySql(iDb *sql.DB) UserKeyRepositorySql {
 	}
 }
 
-func (r UserKeyRepositorySql) FetchUserKeyPairByUser(iUserId int) ([]models.UserKeyPair, error) {
+func (r UserKeyRepositorySql) FetchUserKeyPairByUser(iUserId models.UserId) ([]models.UserKeyPair, error) {
 	response, err := r.db.Query(`
 		SELECT 
 			public_key.id,
@@ -39,7 +39,7 @@ func (r UserKeyRepositorySql) FetchUserKeyPairByUser(iUserId int) ([]models.User
 
 	ret := []models.UserKeyPair{}
 	for response.Next() {
-		var id int
+		var id models.PublicKeyId
 		var publicKey, privateKey string
 		var isDefault bool
 
@@ -67,7 +67,7 @@ func (r UserKeyRepositorySql) FetchUserKeyPairByUser(iUserId int) ([]models.User
 	return ret, nil
 }
 
-func (r UserKeyRepositorySql) FetchDefaultUserKeyPair(iUserId int) (models.UserKeyPair, error) {
+func (r UserKeyRepositorySql) FetchDefaultUserKeyPair(iUserId models.UserId) (models.UserKeyPair, error) {
 	response, err := r.db.Query(`
 		SELECT 
 			public_key.id,
@@ -91,7 +91,7 @@ func (r UserKeyRepositorySql) FetchDefaultUserKeyPair(iUserId int) (models.UserK
 		return models.UserKeyPair{}, fmt.Errorf("no default key found")
 	}
 
-	var id int
+	var id models.PublicKeyId
 	var publicKey, privateKey string
 	var isDefault bool
 
@@ -118,17 +118,17 @@ func (r UserKeyRepositorySql) FetchDefaultUserKeyPair(iUserId int) (models.UserK
 
 func (r UserKeyRepositorySql) FetchPublicKeyByPeerId(
 	iContext context.Context,
-	iPeerId int,
+	iPeerId models.PeerId,
 ) ([]models.PublicKey, error) {
 	result, err := r.db.QueryContext(
 		iContext,
 		`
 			SELECT
-				public_key_id,
-				value
+				peer_key.public_key_id,
+				public_key.value
 			FROM "peer_key" peer_key
 			INNER JOIN "public_key" public_key
-			ON peer_key.owner_id=$1 AND peer_key.public_key_id = public_key.id
+			ON peer_key.peer_id=$1 AND peer_key.public_key_id = public_key.id
 		`,
 		iPeerId,
 	)
@@ -139,7 +139,7 @@ func (r UserKeyRepositorySql) FetchPublicKeyByPeerId(
 
 	ret := []models.PublicKey{}
 	for result.Next() {
-		id := 0
+		id := models.PublicKeyId(0)
 		value := ""
 		err := result.Scan(&id, &value)
 		if err != nil {

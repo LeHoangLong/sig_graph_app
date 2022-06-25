@@ -36,12 +36,13 @@ mutation {
   ) {
     Id,
     Name
-	   Quantity
+	  Quantity
+    NodeId
  }
 }
 
 query {
-  material(id: "946ceea5-59d2-4139-813b-62084cd33f6d") {
+  materialByNodeId(nodeId: "peer_0/86f54d62-2511-4e63-a027-867a951b9dd2") {
     Id,
     Name,
     Unit,
@@ -69,9 +70,8 @@ query {
 
 mutation {
   transferMaterial(
-    materialId: 1,
-    peerId: 1,
-		peerPublicKeyId: 2,
+    materialId: 3,
+		peerPublicKeyId: 6,
     relatedMaterialsId: [],
   ) {
     Accepted
@@ -94,5 +94,29 @@ mutation {
       },
       TransferTime
     }
+  }
+}
+
+query {
+  receivedTransferMaterialRequests(status: [PENDING]) {
+      Id,
+      TransferMaterial {
+        Id,
+        NodeId,
+        Name,
+        Unit,
+        Quantity,
+        CreatedTime,
+      },
+      ExposedMaterials {
+        Id,
+        NodeId,
+        Name,
+        Unit,
+        Quantity,
+        CreatedTime,
+      },
+      TransferTime,
+  		SenderPublicKeyId,
   }
 }

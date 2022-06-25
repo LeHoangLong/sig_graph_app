@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-func ParseReceiveMaterialRequestRequest(
-	iRequest models.PendingMaterialReceiveRequest,
+func ParseOutboundReceiveMaterialRequestRequest(
+	iRequest models.OutboundMaterialReceiveRequest,
 ) ReceiveMaterialRequestRequest {
 	parsedMainMaterial := ParseMaterial(iRequest.ToBeReceivedMaterial)
 	exposedMaterials := []*Material{}
@@ -17,10 +17,32 @@ func ParseReceiveMaterialRequestRequest(
 	}
 
 	return ReceiveMaterialRequestRequest{
-		TransferMaterial: &parsedMainMaterial,
-		ExposedMaterials: exposedMaterials,
-		TransferTime:     time.Time(iRequest.TransferTime),
-		SenderPublicKey:  iRequest.SenderPublicKey,
+		TransferMaterial:  &parsedMainMaterial,
+		ExposedMaterials:  exposedMaterials,
+		TransferTime:      time.Time(iRequest.TransferTime),
+		SenderPublicKeyID: int(iRequest.SenderPublicKeyId),
+		ID:                int(iRequest.Id),
+		Status:            ParseStatus(iRequest.Status),
+	}
+}
+
+func ParseInboundReceiveMaterialRequestRequest(
+	iRequest models.InboundMaterialReceiveRequest,
+) ReceiveMaterialRequestRequest {
+	parsedMainMaterial := ParseMaterial(iRequest.ToBeReceivedMaterial)
+	exposedMaterials := []*Material{}
+	for _, material := range iRequest.RelatedMaterials {
+		parsedMaterial := ParseMaterial(material)
+		exposedMaterials = append(exposedMaterials, &parsedMaterial)
+	}
+
+	return ReceiveMaterialRequestRequest{
+		TransferMaterial:  &parsedMainMaterial,
+		ExposedMaterials:  exposedMaterials,
+		TransferTime:      time.Time(iRequest.TransferTime),
+		SenderPublicKeyID: int(iRequest.SenderPublicKeyId),
+		ID:                int(iRequest.Id),
+		Status:            ParseStatus(iRequest.Status),
 	}
 }
 
@@ -34,7 +56,7 @@ func ParseMaterial(iMaterial models.Material) Material {
 		nextNodeHashedIds = append(nextNodeHashedIds, &nextNodeHashedId)
 	}
 	return Material{
-		ID:                     *iMaterial.Id,
+		ID:                     int(*iMaterial.Id),
 		NodeID:                 iMaterial.NodeId,
 		Name:                   iMaterial.Name,
 		Unit:                   iMaterial.Unit,
@@ -49,7 +71,7 @@ func ParseMaterial(iMaterial models.Material) Material {
 func ParsePublicKey(iKey models.PublicKey) (PublicKey, error) {
 	if iKey.Id != nil {
 		return PublicKey{
-			ID:    *iKey.Id,
+			ID:    int(*iKey.Id),
 			Value: iKey.Value,
 		}, nil
 	} else {
@@ -67,8 +89,32 @@ func ParsePeer(iPeer models.Peer) (Peer, error) {
 		keys[index] = &parsedKey
 	}
 	return Peer{
-		ID:         iPeer.Id,
+		ID:         int(iPeer.Id),
 		Alias:      iPeer.Alias,
 		PublicKeys: keys,
 	}, nil
+}
+
+func CompileStatus(iStatus ReceiveMaterialRequestRequestStatus) models.MaterialReceiveRequestStatus {
+	switch iStatus {
+	case ReceiveMaterialRequestRequestStatusPending:
+		return models.PENDING
+	case ReceiveMaterialRequestRequestStatusAccepted:
+		return models.ACCEPTED
+	case ReceiveMaterialRequestRequestStatusRejected:
+		return models.REJECTED
+	}
+	panic("Unsupported status")
+}
+
+func ParseStatus(iStatus models.MaterialReceiveRequestStatus) ReceiveMaterialRequestRequestStatus {
+	switch iStatus {
+	case models.PENDING:
+		return ReceiveMaterialRequestRequestStatusPending
+	case models.ACCEPTED:
+		return ReceiveMaterialRequestRequestStatusAccepted
+	case models.REJECTED:
+		return ReceiveMaterialRequestRequestStatusRejected
+	}
+	panic("Unsupported status")
 }

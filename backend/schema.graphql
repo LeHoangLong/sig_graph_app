@@ -28,11 +28,19 @@ type MaterialGraph {
   RelatedMaterials: [Material]!,
 }
 
+enum ReceiveMaterialRequestRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 type ReceiveMaterialRequestRequest {
+  Id: Int!,
   TransferMaterial: Material!,
   ExposedMaterials: [Material]!,
   TransferTime: Time!,
-  SenderPublicKey: String!,
+  SenderPublicKeyId: Int!,
+  Status: ReceiveMaterialRequestRequestStatus!,
 }
 
 type ReceiveMaterialRequestResponse {
@@ -48,7 +56,6 @@ type Mutation {
   ): Material
   transferMaterial(
     materialId: Int!, 
-    peerId: Int!,
     peerPublicKeyId: Int!,
     relatedMaterialsId: [Int!]!,
   ) : ReceiveMaterialRequestResponse
@@ -58,5 +65,6 @@ type Query {
   materialByNodeId(nodeId: String!): Material
   materials: [Material!]!
   peers: [Peer!]!
-  pendingReceivedTransferMaterialRequests: [ReceiveMaterialRequestRequest]!
+  receivedTransferMaterialRequests(status: [ReceiveMaterialRequestRequestStatus]!): [ReceiveMaterialRequestRequest]!
+  acceptPendingReceivedTransferMaterialRequests(requestId: Int!, accept: Boolean!): Boolean
 }

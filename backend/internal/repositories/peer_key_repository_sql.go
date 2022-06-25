@@ -41,12 +41,15 @@ func (r PeerKeyRepositorySql) CreateOrFetchPeerKeysByValue(
 	query := `
 		SELECT 
 			public_key.id, 
-			public_key.value
-		FROM "peer_key" peer_key
-		INNER JOIN "public_key" public_key
+			public_key.value,
+			peer.id
+		FROM "peer_key" as peer_key
+		INNER JOIN "public_key" as public_key
 		ON peer_key.public_key_id = public_key.id
-			AND peer_key.owner_id=$1
-			AND 
+			AND peer_key.user_id=$1
+		LEFT JOIN "peer" as peer
+		ON peer.id=peer_key.peer_id
+		WHERE  
 	`
 
 	query = query + strings.Join(argStr, " OR ")
@@ -59,14 +62,24 @@ func (r PeerKeyRepositorySql) CreateOrFetchPeerKeysByValue(
 
 	existingKeysMap := map[string]models.PeerKey{}
 	for result.Next() {
-		keyId := 0
+		keyId := models.PublicKeyId(0)
 		keyVal := ""
-		err := result.Scan(&keyId, &keyVal)
+		peerIdNull := sql.NullInt32{}
+		err := result.Scan(&keyId, &keyVal, &peerIdNull)
 		if err != nil {
 			return []models.PeerKey{}, err
 		}
 
-		existingKeysMap[keyVal] = models.MakePeerKey(models.MakePublicKey(&keyId, keyVal))
+		var peerId *int
+		if peerIdNull.Valid {
+			peerIdInt := int(peerIdNull.Int32)
+			peerId = &peerIdInt
+		}
+		existingKeysMap[keyVal] = models.MakePeerKey(
+			models.MakePublicKey(&keyId, keyVal),
+			iOwner.Id,
+			peerId,
+		)
 	}
 
 	keysToInsert := []string{}
@@ -98,9 +111,9 @@ func (r PeerKeyRepositorySql) CreateOrFetchPeerKeysByValue(
 			return []models.PeerKey{}, err
 		}
 
-		newPublicKeyIds := []int{}
+		newPublicKeyIds := []models.PublicKeyId{}
 		for result.Next() {
-			publicKeyId := 0
+			publicKeyId := models.PublicKeyId(0)
 			err := result.Scan(&publicKeyId)
 			if err != nil {
 				return []models.PeerKey{}, err
@@ -117,7 +130,7 @@ func (r PeerKeyRepositorySql) CreateOrFetchPeerKeysByValue(
 			count++
 		}
 		query = `
-			INSERT INTO "peer_key" (public_key_id, owner_id) VALUES 
+			INSERT INTO "peer_key" (public_key_id, user_id) VALUES 
 		`
 		query += strings.Join(argStr, ", ")
 		_, err = r.db.Query(query, arg...)
@@ -126,7 +139,11 @@ func (r PeerKeyRepositorySql) CreateOrFetchPeerKeysByValue(
 		}
 
 		for index := range keysToInsert {
-			newKey := models.MakePeerKey(models.MakePublicKey(&newPublicKeyIds[index], keysToInsert[index]))
+			newKey := models.MakePeerKey(
+				models.MakePublicKey(&newPublicKeyIds[index], keysToInsert[index]),
+				iOwner.Id,
+				nil,
+			)
 			newKeysMap[newKey.Value] = newKey
 		}
 	}
@@ -140,6 +157,57 @@ func (r PeerKeyRepositorySql) CreateOrFetchPeerKeysByValue(
 		} else {
 			return []models.PeerKey{}, fmt.Errorf("Something wrong, no key matched")
 		}
+	}
+
+	return ret, nil
+}
+
+func (r PeerKeyRepositorySql) FetchPublicKeysById(
+	iContext context.Context,
+	iKeysId map[models.PublicKeyId]bool,
+) (map[models.PublicKeyId]models.PublicKey, error) {
+	if len(iKeysId) == 0 {
+		return map[models.PublicKeyId]models.PublicKey{}, nil
+	}
+	count := 1
+	argStr := []string{}
+	arg := []interface{}{}
+
+	query := `
+		SELECT id, value
+		FROM "public_key"
+		WHERE 
+	`
+	for key := range iKeysId {
+		argStr = append(argStr, fmt.Sprintf("(id=$%d)", count))
+		arg = append(arg, key)
+		count += 1
+	}
+
+	query += strings.Join(argStr, " OR ")
+	response, err := r.db.QueryContext(
+		iContext,
+		query,
+		arg...,
+	)
+
+	if err != nil {
+		return map[models.PublicKeyId]models.PublicKey{}, nil
+	}
+	defer response.Close()
+
+	ret := map[models.PublicKeyId]models.PublicKey{}
+	for response.Next() {
+		publicKeyId := models.PublicKeyId(0)
+		publicKeyValue := ""
+		err := response.Scan(
+			&publicKeyId,
+			&publicKeyValue,
+		)
+		if err != nil {
+			return map[models.PublicKeyId]models.PublicKey{}, nil
+		}
+		ret[publicKeyId] = models.MakePublicKey(&publicKeyId, publicKeyValue)
 	}
 
 	return ret, nil

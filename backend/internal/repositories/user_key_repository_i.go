@@ -6,7 +6,7 @@ import (
 )
 
 type UserKeyRepositoryI interface {
-	FetchUserKeyPairByUser(iUserId int) ([]models.UserKeyPair, error)
-	FetchPublicKeyByPeerId(iContext context.Context, iPeerId int) ([]models.PublicKey, error)
-	FetchDefaultUserKeyPair(iUserId int) (models.UserKeyPair, error)
+	FetchUserKeyPairByUser(iUserId models.UserId) ([]models.UserKeyPair, error)
+	FetchPublicKeyByPeerId(iContext context.Context, iPeerId models.PeerId) ([]models.PublicKey, error)
+	FetchDefaultUserKeyPair(iUserId models.UserId) (models.UserKeyPair, error)
 }

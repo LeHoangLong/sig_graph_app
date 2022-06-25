@@ -27,7 +27,7 @@ func (r UserRepositorySql) GetUser(username string) (*models.User, error) {
 	return nil, nil
 }
 
-func (r UserRepositorySql) GetUserById(iContext context.Context, iId int) (models.User, error) {
+func (r UserRepositorySql) GetUserById(iContext context.Context, iId models.UserId) (models.User, error) {
 	result := r.db.QueryRowContext(
 		iContext,
 		`
@@ -55,7 +55,7 @@ func (r UserRepositorySql) GetUserById(iContext context.Context, iId int) (model
 		return models.User{}, err
 	}
 
-	user := models.MakeUser(id, username, passwordHash)
+	user := models.MakeUser(models.UserId(id), username, passwordHash)
 	return user, nil
 }
 
@@ -91,7 +91,7 @@ func (r UserRepositorySql) FindUserWithPublicKey(iPublicKey string) (models.User
 	}
 
 	ret := models.MakeUser(
-		id,
+		models.UserId(id),
 		username,
 		passwordHash,
 	)

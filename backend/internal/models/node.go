@@ -1,13 +1,15 @@
 package models
 
+type NodeId int
+
 type Node struct {
-	Id                    *int            `json:"Id"`
+	Id                    *NodeId         `json:"Id"`
 	NodeId                string          `json:"NodeId"`
 	IsFinalized           bool            `json:"IsFinalized"`
 	PreviousNodeHashedIds map[string]bool `json:"PreviousNodeHashedIds"` /// used as a set
 	NextNodeHashedIds     map[string]bool `json:"NextNodeHashedIds"`
-	ChildrenIds           map[int]bool
-	ParentIds             map[int]bool
+	ChildrenIds           map[NodeId]bool
+	ParentIds             map[NodeId]bool
 	OwnerPublicKey        PublicKey  `json:"OwnerPublicKey"`
 	CreatedTime           CustomTime `json:"CreatedTime"`
 	Signature             string     `json:"Signature"`
@@ -15,13 +17,13 @@ type Node struct {
 }
 
 func MakeNode(
-	iId *int,
+	iId *NodeId,
 	iNodeId string,
 	iIsFinalized bool,
 	iPreviousNodeHashedIds map[string]bool,
 	iNextNodeHashedIds map[string]bool,
-	iParentIds map[int]bool,
-	iChildrenIds map[int]bool,
+	iParentIds map[NodeId]bool,
+	iChildrenIds map[NodeId]bool,
 	iOwnerPublicKey PublicKey,
 	iCreatedTime CustomTime,
 	iSignature string,

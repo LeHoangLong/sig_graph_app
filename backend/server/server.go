@@ -47,11 +47,11 @@ func initialize(container *dig.Container) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = peer_material_repositories.ProvidePendingMaterialReceiveRequestRepositorySql(container)
+	err = peer_material_repositories.ProvideMaterialReceiveRequestRepositorySql(container)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = peer_material_services.ProvidePendingReceiveMaterialRequestRepositoryService(container)
+	err = peer_material_services.ProvideReceiveMaterialRequestRepositoryService(container)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func initialize(container *dig.Container) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = peer_material_repositories.ProvidePendingMaterialReceiveRequestResponseRepositorySql(container)
+	err = peer_material_repositories.ProvideMaterialReceiveRequestAcknowledgementRepositorySql(container)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -127,6 +127,10 @@ func initialize(container *dig.Container) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	err = material_contract_service.ProvideMaterialTransferServiceHl(container)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {
@@ -144,10 +148,7 @@ func main() {
 			port = defaultPort
 		}
 
-		fmt.Println("2")
-
 		err := container.Invoke(func(peerMaterialController *controllers.PeerMaterialController) {
-			fmt.Println("1")
 			http.Handle("/", handler.Playground("GraphQL playground", "/query"))
 			http.Handle("/query", handler.GraphQL(graphql.NewExecutableSchema(
 				graphql.Config{
@@ -164,16 +165,13 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println("3")
 	}()
 
 	go func() {
 		container := dig.New()
 		initialize(container)
-		fmt.Println("5")
 		defer wg.Done()
 		err := container.Invoke(func(config common.Config, server *peer_material_services.PeerMaterialServerServiceGrpc) {
-			fmt.Println("4")
 			lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", config.GrpcServerPort))
 			if err != nil {
 				log.Fatalf("failed to listen: %v", err)
@@ -186,9 +184,6 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println("6")
 	}()
-	fmt.Println("waiting")
 	wg.Wait()
-	fmt.Println("done")
 }
