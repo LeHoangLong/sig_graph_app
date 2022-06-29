@@ -50,8 +50,35 @@ func (r *mutationResolver) TransferMaterial(ctx context.Context, materialID int,
 	return &parsedResponse, nil
 }
 
+func (r *mutationResolver) AcceptPendingReceivedTransferMaterialRequests(ctx context.Context, requestID int, accept bool, message string) (*bool, error) {
+	userId, err := services.GetCurrentUserFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.PeerMaterialController.AcceptPendingMaterialReceiveRequest(
+		ctx,
+		userId,
+		models.MaterialReceiveRequestId(requestID),
+		accept,
+		message,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ret := true
+	return &ret, nil
+}
+
 func (r *queryResolver) MaterialByNodeID(ctx context.Context, nodeID string) (*Material, error) {
-	material, err := r.MaterialContractController.GetMaterialByNodeId(ctx, nodeID)
+	userId, err := services.GetCurrentUserFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	material, err := r.MaterialContractController.GetMaterialByNodeId(ctx, userId, nodeID)
 	if err != nil {
 		return nil, err
 	}
@@ -119,10 +146,6 @@ func (r *queryResolver) ReceivedTransferMaterialRequests(ctx context.Context, st
 	return parsedRequests, nil
 }
 
-func (r *queryResolver) AcceptPendingReceivedTransferMaterialRequests(ctx context.Context, requestID int, accept bool) (*bool, error) {
-	panic(fmt.Errorf("not implemented"))
-}
-
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
@@ -131,3 +154,10 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.

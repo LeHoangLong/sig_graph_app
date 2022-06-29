@@ -4,6 +4,20 @@ const Client = require('pg').Client
 const YAML = require('yaml')
 const fs = require('fs')
 
+async function fetchProtocolId(client, protocol) {
+  const protocolResponse = await client.query(`
+    SELECT * 
+    FROM "supported_peer_protocol" 
+    WHERE protocol = $1 AND major_version = $2 AND minor_version = $3
+  `, [protocol.name, protocol.major, protocol.minor])
+
+  if (protocolResponse.rows.length == 0) {
+    throw "Protocol " + protocol.name + '@'  + protocol.major + '.' + protocol.minor + ' is not supported'
+  }
+  const protocolId = protocolResponse.rows[0].id
+  return protocolId
+}
+
 module.exports.up = async function (next) {
   const client = new Client()
   await client.connect()
@@ -42,6 +56,21 @@ module.exports.up = async function (next) {
       )
     `, [userId, publicKeyResponse.rows[0].id, privateKeyFile])
       
+    for (const [index, endpoint] of config.user.endpoints.entries()) {
+      const protocolId = await fetchProtocolId(client, endpoint.protocol)
+      await client.query(`
+        INSERT INTO "user_endpoint" (
+          user_id,
+          url,
+          protocol_id
+        ) VALUES (
+          $1,
+          $2,
+          $3
+        )
+      `, [userId, endpoint.url, protocolId])
+    }
+
     for (const [index, peer] of config.peers.entries()) {
       const peerResponse = await client.query(`
         INSERT INTO "peer" (
@@ -78,16 +107,7 @@ module.exports.up = async function (next) {
       }
 
       for (const endpoint of peer.enpoints) {
-        const protocolResponse = await client.query(`
-          SELECT * 
-          FROM "supported_peer_protocol" 
-          WHERE protocol = $1 AND major_version = $2 AND minor_version = $3
-        `, [endpoint.protocol.name, endpoint.protocol.major, endpoint.protocol.minor])
-
-        if (protocolResponse.rows.length == 0) {
-          throw "Protocol " + endpoint.protocol.name + '@'  + endpoint.protocol.major + '.' + endpoint.protocol.minor + ' is not supported'
-        }
-        const protocolId = protocolResponse.rows[0].id
+        const protocolId = await fetchProtocolId(client, endpoint.protocol)
         await client.query(`
           INSERT INTO "peer_endpoint" (
             peer_id,

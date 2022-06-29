@@ -57,6 +57,7 @@ module.exports.up = async function (next) {
       CREATE TABLE IF NOT EXISTS "node" (
         id SERIAL PRIMARY KEY,
         node_id TEXT NOT NULL,
+        namespace TEXT NOT NULL,
         public_key_id INTEGER REFERENCES "public_key"(id) ON DELETE CASCADE ON UPDATE CASCADE,
         is_finalized BOOLEAN NOT NULL,
         previous_node_hashed_ids TEXT[] NOT NULL,
@@ -65,6 +66,10 @@ module.exports.up = async function (next) {
         signature BYTEA NOT NULL,
         type TEXT REFERENCES "node_type"(type) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL
       )
+    `)
+
+    await client.query(`
+        CREATE UNIQUE INDEX unique_node_for_each_user ON "node"(node_id, namespace)
     `)
 
     await client.query(`
@@ -115,10 +120,20 @@ module.exports.up = async function (next) {
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS "peer_endpoint" (
-          id SERIAL PRIMARY KEY,
-          peer_id INTEGER REFERENCES "peer"(id) ON UPDATE CASCADE ON DELETE CASCADE NOT NULL,
-          url TEXT NOT NULL CHECK(LENGTH(url) > 0),
-          protocol_id INTEGER REFERENCES "supported_peer_protocol"(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT NULL
+        id SERIAL PRIMARY KEY,
+        peer_id INTEGER REFERENCES "peer"(id) ON UPDATE CASCADE ON DELETE CASCADE NOT NULL,
+        url TEXT NOT NULL CHECK(LENGTH(url) > 0),
+        protocol_id INTEGER REFERENCES "supported_peer_protocol"(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT NULL
+      )
+    `)
+
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "user_endpoint" (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES "user"(id) ON UPDATE CASCADE ON DELETE CASCADE NOT NULL,
+        url TEXT NOT NULL CHECK(LENGTH(url) > 0),
+        protocol_id INTEGER REFERENCES "supported_peer_protocol"(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT NULL
       )
     `)
     await client.query('COMMIT')
@@ -135,6 +150,9 @@ module.exports.down = async function (next) {
   await client.connect()
   try {
     await client.query('BEGIN')
+    await client.query(`
+      DROP TABLE IF EXISTS "user_endpoint"
+    `)
     await client.query(`
       DROP TABLE IF EXISTS "peer_endpoint"
     `)

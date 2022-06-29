@@ -8,7 +8,7 @@ import (
 type PeerKeyRepositoryI interface {
 	CreateOrFetchPeerKeysByValue(
 		iContext context.Context,
-		iOwner models.User,
+		iOwnerId models.UserId,
 		iPeerKeys []string,
 	) ([]models.PeerKey, error)
 	FetchPublicKeysById(

@@ -50,6 +50,7 @@ func (s MaterialFetchServiceHl) GetMaterialById(
 		materialSc.CreatedTime,
 		materialSc.Signature,
 		"material",
+		nil,
 	)
 
 	return models.NewMaterial(

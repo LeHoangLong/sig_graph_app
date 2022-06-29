@@ -213,6 +213,16 @@ var UserKeySet = wire.NewSet(
 	wire.Bind(new(repositories.UserKeyRepositoryI), new(repositories.UserKeyRepositorySql)),
 )
 
+func InitializePeerKeyRepositorySql() repositories.PeerKeyRepositorySql {
+	wire.Build(repositories.MakePeerKeyRepositorySql, InitializeSqlDriver)
+	return repositories.PeerKeyRepositorySql{}
+}
+
+var PeerKeySet = wire.NewSet(
+	InitializePeerKeyRepositorySql,
+	wire.Bind(new(repositories.PeerKeyRepositoryI), new(repositories.PeerKeyRepositorySql)),
+)
+
 /// Finished initializing repositories
 func InitializeIdGeneratorServiceUuidPrefix() graph_id_service.IdGeneratorServiceUuidPrefix {
 	config := InitConfig()
@@ -235,11 +245,11 @@ func InitializeMaterialContractServiceFactory() material_contract_service.Materi
 }
 
 func InitializeMaterialRepositoryService() services.MaterialRepositoryService {
-	wire.Build(services.MakeMaterialRepositoryService, InitializeMaterialRepositorySqlFactory, UserKeySet, MaterialRepositorySet)
+	wire.Build(services.MakeMaterialRepositoryService, InitializeMaterialRepositorySqlFactory, UserKeySet, MaterialRepositorySet, IdHasherSet)
 	return services.MaterialRepositoryService{}
 }
 
 func InitializeMaterialContractController() controllers.MaterialContractController {
-	wire.Build(controllers.MakeMaterialContractController, UserKeySet, InitializeMaterialContractServiceFactory, InitializeMaterialRepositoryService)
+	wire.Build(controllers.MakeMaterialContractController, UserKeySet, PeerKeySet, InitializeMaterialContractServiceFactory, InitializeMaterialRepositoryService)
 	return controllers.MaterialContractController{}
 }

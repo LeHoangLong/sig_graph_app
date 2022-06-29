@@ -94,6 +94,12 @@ func InitializeUserKeyRepositorySql() repositories.UserKeyRepositorySql {
 	return userKeyRepositorySql
 }
 
+func InitializePeerKeyRepositorySql() repositories.PeerKeyRepositorySql {
+	sqlDB := InitializeSqlDriver()
+	peerKeyRepositorySql := repositories.MakePeerKeyRepositorySql(sqlDB)
+	return peerKeyRepositorySql
+}
+
 func InitializeIdGeneratorService() graph_id_service.IdGeneratorServiceUuid {
 	idGeneratorServiceUuidPrefix := InitializeIdGeneratorServiceUuidPrefix()
 	idGeneratorServiceUuid := graph_id_service.MakeIdGeneratorServiceUuid(idGeneratorServiceUuidPrefix)
@@ -114,7 +120,8 @@ func InitializeMaterialRepositoryService() services.MaterialRepositoryService {
 	materialRepositoryFactory := InitializeMaterialRepositorySqlFactory()
 	userKeyRepositorySql := InitializeUserKeyRepositorySql()
 	materialRepositorySql := InitializeMaterialRepository()
-	materialRepositoryService := services.MakeMaterialRepositoryService(materialRepositoryFactory, userKeyRepositorySql, materialRepositorySql)
+	idHasher := InitializeIdHasher()
+	materialRepositoryService := services.MakeMaterialRepositoryService(materialRepositoryFactory, userKeyRepositorySql, materialRepositorySql, idHasher)
 	return materialRepositoryService
 }
 
@@ -122,7 +129,8 @@ func InitializeMaterialContractController() controllers.MaterialContractControll
 	materialServiceFactory := InitializeMaterialContractServiceFactory()
 	materialRepositoryService := InitializeMaterialRepositoryService()
 	userKeyRepositorySql := InitializeUserKeyRepositorySql()
-	materialContractController := controllers.MakeMaterialContractController(materialServiceFactory, materialRepositoryService, userKeyRepositorySql)
+	peerKeyRepositorySql := InitializePeerKeyRepositorySql()
+	materialContractController := controllers.MakeMaterialContractController(materialServiceFactory, materialRepositoryService, userKeyRepositorySql, peerKeyRepositorySql)
 	return materialContractController
 }
 
@@ -255,6 +263,10 @@ var PeerSet = wire.NewSet(
 
 var UserKeySet = wire.NewSet(
 	InitializeUserKeyRepositorySql, wire.Bind(new(repositories.UserKeyRepositoryI), new(repositories.UserKeyRepositorySql)),
+)
+
+var PeerKeySet = wire.NewSet(
+	InitializePeerKeyRepositorySql, wire.Bind(new(repositories.PeerKeyRepositoryI), new(repositories.PeerKeyRepositorySql)),
 )
 
 /// Finished initializing repositories

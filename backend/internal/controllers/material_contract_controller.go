@@ -13,17 +13,20 @@ type MaterialContractController struct {
 	materialServiceFactory material_contract_service.MaterialServiceFactory
 	repositoryService      services.MaterialRepositoryService
 	userKeyRepository      repositories.UserKeyRepositoryI
+	peerKeyRepository      repositories.PeerKeyRepositoryI
 }
 
 func MakeMaterialContractController(
 	iMaterialServiceFactory material_contract_service.MaterialServiceFactory,
 	iRepositoryService services.MaterialRepositoryService,
 	iUserKeyRepository repositories.UserKeyRepositoryI,
+	iPeerKeyRepository repositories.PeerKeyRepositoryI,
 ) MaterialContractController {
 	return MaterialContractController{
 		materialServiceFactory: iMaterialServiceFactory,
 		repositoryService:      iRepositoryService,
 		userKeyRepository:      iUserKeyRepository,
+		peerKeyRepository:      iPeerKeyRepository,
 	}
 }
 
@@ -63,6 +66,7 @@ func (c MaterialContractController) CreateMaterialForCurrentUser(
 
 	material, err = c.repositoryService.AddMaterialToUser(
 		iCtx,
+		userId,
 		userKeyPair.PublicKey,
 		material,
 	)
@@ -76,24 +80,15 @@ func (c MaterialContractController) CreateMaterialForCurrentUser(
 
 func (c MaterialContractController) GetMaterialByNodeId(
 	iCtx context.Context,
+	iUserId models.UserId,
 	iMaterialNodeId string,
 ) (models.Material, error) {
-	userId, err := services.GetCurrentUserFromContext(iCtx)
-	if err != nil {
-		return models.Material{}, err
-	}
-
 	materialFetchSc := c.materialServiceFactory.BuildMaterialFetchService()
 	material, err := materialFetchSc.GetMaterialById(
 		iMaterialNodeId,
 	)
 
-	doesMaterialBelongToUser, err := c.repositoryService.DoesMaterialBelongToUser(userId, material)
-	if err != nil {
-		return models.Material{}, err
-	}
-
-	keys, err := c.userKeyRepository.FetchUserKeyPairByUser(userId)
+	keys, err := c.userKeyRepository.FetchUserKeyPairByUser(iUserId)
 	var selectedKey models.PublicKey
 	for _, key := range keys {
 		if key.PublicKey.Value == material.OwnerPublicKey.Value {
@@ -101,17 +96,32 @@ func (c MaterialContractController) GetMaterialByNodeId(
 			break
 		}
 	}
-	if doesMaterialBelongToUser {
-		if selectedKey.Id != nil { /// This should always happen
-			material, err = c.repositoryService.AddMaterialToUser(
-				iCtx,
-				selectedKey,
-				material,
-			)
+
+	if selectedKey.Id == nil {
+		peerKeys, err := c.peerKeyRepository.CreateOrFetchPeerKeysByValue(
+			iCtx,
+			iUserId,
+			[]string{material.OwnerPublicKey.Value},
+		)
+		if err != nil {
+			return models.Material{}, err
 		}
+		selectedKey = peerKeys[0].PublicKey
 	}
 
-	return material, err
+	material.OwnerPublicKey = selectedKey
+	namespace := services.UserIdToNamespace(iUserId)
+	materials, err := c.repositoryService.SaveMaterialsIgnoreId(
+		iCtx,
+		namespace,
+		[]models.Material{material},
+	)
+
+	if err != nil {
+		return models.Material{}, err
+	}
+
+	return materials[0], nil
 }
 
 func (c MaterialContractController) ListMaterialsOfCurrentUser(
@@ -123,5 +133,5 @@ func (c MaterialContractController) ListMaterialsOfCurrentUser(
 	}
 
 	keys, err := c.userKeyRepository.FetchUserKeyPairByUser(userId)
-	return c.repositoryService.FetchMaterialsOfUser(iCtx, keys, 0, 10000)
+	return c.repositoryService.FetchMaterialsOfUser(iCtx, userId, keys, 0, 10000)
 }

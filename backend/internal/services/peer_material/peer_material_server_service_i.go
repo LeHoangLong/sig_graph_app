@@ -9,5 +9,12 @@ type ReceiveMaterialRequestReceivedHandler interface {
 	) (ReceiveMaterialRequestResponse, error)
 }
 
+type ReceiveMaterialResponseHandler interface {
+	HandleReponse(
+		iContext context.Context,
+		iRequest ReceiveMaterialResponse,
+	) (ReceiveMaterialResponseAcknowledgement, error)
+}
+
 type PeerMaterialServerServiceI interface {
 }

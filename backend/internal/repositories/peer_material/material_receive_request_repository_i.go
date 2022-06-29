@@ -14,9 +14,10 @@ type SimplifiedInboundReceiveMaterialRequest struct {
 	SenderPublicKey        models.PublicKeyId
 	TransferTime           models.CustomTime
 	Status                 models.MaterialReceiveRequestStatus
+	SenderEndpoints        []models.SenderEndpoint
 }
 
-func makeSimplifiedReceiveMaterialRequest(
+func makeSimplifiedInboundReceiveMaterialRequest(
 	iId models.MaterialReceiveRequestId,
 	iRecipientUserId models.UserId,
 	iToBeReceivedMaterialId models.NodeId,
@@ -25,6 +26,7 @@ func makeSimplifiedReceiveMaterialRequest(
 	iSenderPublicKey models.PublicKeyId,
 	iTransferTime models.CustomTime,
 	iStatus models.MaterialReceiveRequestStatus,
+	iSenderEndpoints []models.SenderEndpoint,
 ) SimplifiedInboundReceiveMaterialRequest {
 	return SimplifiedInboundReceiveMaterialRequest{
 		Id:                     iId,
@@ -35,6 +37,7 @@ func makeSimplifiedReceiveMaterialRequest(
 		SenderPublicKey:        iSenderPublicKey,
 		TransferTime:           iTransferTime,
 		Status:                 iStatus,
+		SenderEndpoints:        iSenderEndpoints,
 	}
 }
 
@@ -60,6 +63,7 @@ type MaterialReceiveRequestRepositoryI interface {
 		iOptions []models.SignatureOption,
 		iTransferTime models.CustomTime,
 		iStatus models.MaterialReceiveRequestStatus,
+		iSenderEndpoints []models.SenderEndpoint,
 	) (models.InboundMaterialReceiveRequest, error)
 
 	FetchInboundReceiveMaterialRequestsByUserId(
@@ -68,9 +72,10 @@ type MaterialReceiveRequestRepositoryI interface {
 		iStatus []models.MaterialReceiveRequestStatus,
 	) ([]SimplifiedInboundReceiveMaterialRequest, error)
 
+	/// returns NotFound if iRequestId not found
 	UpdateMaterialReceiveRequestStatus(
 		iContext context.Context,
 		iRequestId models.MaterialReceiveRequestId,
 		iStatus models.MaterialReceiveRequestStatus,
-	) (SimplifiedInboundReceiveMaterialRequest, error)
+	) error
 }

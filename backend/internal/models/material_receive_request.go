@@ -30,10 +30,16 @@ type OutboundMaterialReceiveRequest struct {
 	SenderPublicKeyId PublicKeyId `json:"SenderPublicKeyId"`
 }
 
+type SenderEndpoint struct {
+	Protocol PeerProtocol
+	Url      string
+}
+
 type InboundMaterialReceiveRequest struct {
 	MaterialReceiveRequest
-	RecipientUserId   UserId      `json:"RecipientUserId"`
-	SenderPublicKeyId PublicKeyId `json:"SenderPublicKeyId"`
+	RecipientUserId   UserId           `json:"RecipientUserId"`
+	SenderPublicKeyId PublicKeyId      `json:"SenderPublicKeyId"`
+	SenderEndpoints   []SenderEndpoint `json:"SenderEndpoints"`
 }
 
 func MakeSignatureOption(
@@ -43,6 +49,16 @@ func MakeSignatureOption(
 	return SignatureOption{
 		Id:        iId,
 		Signature: iSignature,
+	}
+}
+
+func MakeSenderEndpoint(
+	iProtocol PeerProtocol,
+	iUrl string,
+) SenderEndpoint {
+	return SenderEndpoint{
+		Protocol: iProtocol,
+		Url:      iUrl,
 	}
 }
 
@@ -82,10 +98,12 @@ func MakeInboundMaterialReceiveRequest(
 	iRequest MaterialReceiveRequest,
 	iRecipientUserId UserId,
 	iSenderPublicKeyId PublicKeyId,
+	iSenderEndpoints []SenderEndpoint,
 ) InboundMaterialReceiveRequest {
 	return InboundMaterialReceiveRequest{
 		MaterialReceiveRequest: iRequest,
 		RecipientUserId:        iRecipientUserId,
 		SenderPublicKeyId:      iSenderPublicKeyId,
+		SenderEndpoints:        iSenderEndpoints,
 	}
 }

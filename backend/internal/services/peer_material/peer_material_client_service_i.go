@@ -7,5 +7,8 @@ type PeerMaterialClientServiceI interface {
 		iCtx context.Context,
 		iRequest ReceiveMaterialRequestRequest,
 	) (ReceiveMaterialRequestResponse, error)
-	SendReceiveMaterialResponse()
+	SendReceiveMaterialResponse(
+		iCtx context.Context,
+		iResponse ReceiveMaterialResponse,
+	) (ReceiveMaterialResponseAcknowledgement, error)
 }

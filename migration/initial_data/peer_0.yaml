@@ -1,6 +1,12 @@
 user:
   private_key: keys/peer_0/private_1.pem
   public_key: keys/peer_0/public_1.pem
+  endpoints:
+    - url: localhost:6000
+      protocol: 
+        name: grpc
+        major: 0
+        minor: 0
 peers:
   - alias: peer_1
     public_keys:

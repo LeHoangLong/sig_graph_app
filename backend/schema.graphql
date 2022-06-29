@@ -59,6 +59,11 @@ type Mutation {
     peerPublicKeyId: Int!,
     relatedMaterialsId: [Int!]!,
   ) : ReceiveMaterialRequestResponse
+  acceptPendingReceivedTransferMaterialRequests(
+    requestId: Int!, 
+    accept: Boolean!,
+    message: String!,
+  ): Boolean
 }
 
 type Query {
@@ -66,5 +71,5 @@ type Query {
   materials: [Material!]!
   peers: [Peer!]!
   receivedTransferMaterialRequests(status: [ReceiveMaterialRequestRequestStatus]!): [ReceiveMaterialRequestRequest]!
-  acceptPendingReceivedTransferMaterialRequests(requestId: Int!, accept: Boolean!): Boolean
+  
 }

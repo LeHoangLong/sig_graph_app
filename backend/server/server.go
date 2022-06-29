@@ -131,6 +131,14 @@ func initialize(container *dig.Container) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	err = repositories.ProvideUserEndpointRepositorySql(container)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = repositories.ProvidePeerProtocolRepositorySql(container)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func main() {

@@ -1,6 +1,7 @@
 package peer_material_services
 
 import (
+	"backend/internal/common"
 	"backend/internal/models"
 	"backend/internal/repositories"
 	peer_material_repositories "backend/internal/repositories/peer_material"
@@ -10,15 +11,18 @@ import (
 type ReceiveMaterialRequestRepositoryService struct {
 	materialRepository               repositories.MaterialRepositoryI
 	receiveMaterialRequestRepository peer_material_repositories.MaterialReceiveRequestRepositoryI
+	peerProtocolRepository           repositories.PeerProtocolRepositoryI
 }
 
 func MakeReceiveMaterialRequestRepositoryService(
 	iMaterialRepository repositories.MaterialRepositoryI,
 	iReceiveMaterialRequestRepository peer_material_repositories.MaterialReceiveRequestRepositoryI,
+	iPeerProtocolRepository repositories.PeerProtocolRepositoryI,
 ) *ReceiveMaterialRequestRepositoryService {
 	return &ReceiveMaterialRequestRepositoryService{
 		materialRepository:               iMaterialRepository,
 		receiveMaterialRequestRepository: iReceiveMaterialRequestRepository,
+		peerProtocolRepository:           iPeerProtocolRepository,
 	}
 }
 
@@ -53,7 +57,60 @@ func (s *ReceiveMaterialRequestRepositoryService) CreateInboundReceiveMaterialRe
 	iRelatedMaterials []models.Material,
 	iOptions []models.SignatureOption,
 	iTransferTime models.CustomTime,
+	iSenderEndpoints []SenderEndpoint,
 ) (models.InboundMaterialReceiveRequest, error) {
+	if len(iSenderEndpoints) == 0 {
+		return models.InboundMaterialReceiveRequest{}, common.InvalidArgument
+	}
+	protocolWithMajorVersions := map[repositories.ProtocolWithMajorVersion]bool{}
+	for i := range iSenderEndpoints {
+		protocolWithMajorVersion := repositories.MakeProtocolWithMajorVersion(
+			iSenderEndpoints[i].Protocol,
+			iSenderEndpoints[i].MajorVersion,
+		)
+		protocolWithMajorVersions[protocolWithMajorVersion] = true
+	}
+	supportedProtocols, err := s.peerProtocolRepository.FilterSupportedProtocolsWithMajorVersion(
+		iContext,
+		protocolWithMajorVersions,
+	)
+
+	if err != nil {
+		return models.InboundMaterialReceiveRequest{}, err
+	}
+
+	senderEndpoints := []models.SenderEndpoint{}
+	for i := range iSenderEndpoints {
+		protocolWithMajorVersion := repositories.MakeProtocolWithMajorVersion(
+			iSenderEndpoints[i].Protocol,
+			iSenderEndpoints[i].MajorVersion,
+		)
+		if protocol, ok := supportedProtocols[protocolWithMajorVersion]; ok {
+			/// find the lowest minor version that is at least equals to the endpoint minor
+			lowestMinorIndex := -1
+			lowestMinor := -1
+			for i := range protocol {
+				if protocol[i].MinorVersion >= iSenderEndpoints[i].MinorVersion {
+					if protocol[i].MinorVersion < lowestMinor || lowestMinorIndex == -1 {
+						lowestMinor = protocol[i].MinorVersion
+						lowestMinorIndex = i
+					}
+				}
+			}
+
+			if lowestMinorIndex >= 0 {
+				senderEndpoints = append(senderEndpoints, models.MakeSenderEndpoint(
+					protocol[lowestMinorIndex],
+					iSenderEndpoints[i].Url,
+				))
+			}
+		}
+	}
+
+	if len(senderEndpoints) == 0 {
+		return models.InboundMaterialReceiveRequest{}, common.Unsupported
+	}
+
 	return s.receiveMaterialRequestRepository.CreateInboundReceiveMaterialRequest(
 		iContext,
 		iRecipientUserId,
@@ -63,6 +120,7 @@ func (s *ReceiveMaterialRequestRepositoryService) CreateInboundReceiveMaterialRe
 		iOptions,
 		iTransferTime,
 		models.PENDING,
+		senderEndpoints,
 	)
 }
 
@@ -70,26 +128,18 @@ func (s *ReceiveMaterialRequestRepositoryService) UpdateMaterialReceiveRequestSt
 	iContext context.Context,
 	iRequestId models.MaterialReceiveRequestId,
 	iStatus models.MaterialReceiveRequestStatus,
-) (models.MaterialReceiveRequest, error) {
-	simplifiedRequest, err := s.receiveMaterialRequestRepository.UpdateMaterialReceiveRequestStatus(
+) error {
+	err := s.receiveMaterialRequestRepository.UpdateMaterialReceiveRequestStatus(
 		iContext,
 		iRequestId,
 		iStatus,
 	)
 
 	if err != nil {
-		return models.MaterialReceiveRequest{}, err
+		return err
 	}
 
-	requests, err := s.makeMaterialReceiveRequestsFromSimplifiedRequests(
-		iContext,
-		[]peer_material_repositories.SimplifiedInboundReceiveMaterialRequest{simplifiedRequest},
-	)
-
-	if err != nil {
-		return models.MaterialReceiveRequest{}, err
-	}
-	return requests[0], nil
+	return nil
 }
 
 func (s *ReceiveMaterialRequestRepositoryService) FetchInboundReceiveMaterialRequestsByUser(
@@ -118,6 +168,7 @@ func (s *ReceiveMaterialRequestRepositoryService) FetchInboundReceiveMaterialReq
 			requests[i],
 			simplifiedRequests[i].RecipientUserId,
 			simplifiedRequests[i].SenderPublicKey,
+			simplifiedRequests[i].SenderEndpoints,
 		)
 		inboundRequests = append(inboundRequests, inboundRequest)
 	}

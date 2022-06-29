@@ -39,6 +39,32 @@ func convertNodeToGrpc(
 	}
 }
 
+func makeGrpcEndpoint(
+	iProtocol string,
+	iMajorVersion int32,
+	iMinorVersion int32,
+	iUrl string,
+) grpc.Endpoint {
+	return grpc.Endpoint{
+		Protocol:     iProtocol,
+		MajorVersion: iMajorVersion,
+		MinorVersion: iMinorVersion,
+		Url:          iUrl,
+	}
+}
+
+func convertSenderEndpointsToGrpc(
+	iEndpoint SenderEndpoint,
+) *grpc.Endpoint {
+	endpoint := makeGrpcEndpoint(
+		iEndpoint.Protocol,
+		int32(iEndpoint.MajorVersion),
+		int32(iEndpoint.MinorVersion),
+		iEndpoint.Url,
+	)
+	return &endpoint
+}
+
 func convertReceiverMaterialRequestToGrpc(
 	iRequest ReceiveMaterialRequestRequest,
 ) *grpc.ReceiveMaterialRequestRequest {
@@ -52,6 +78,11 @@ func convertReceiverMaterialRequestToGrpc(
 		grpcNodes[node.Id] = convertNodeToGrpc(node)
 	}
 
+	endpoints := []*grpc.Endpoint{}
+	for i := range iRequest.SenderEndpoints {
+		endpoints = append(endpoints, convertSenderEndpointsToGrpc(iRequest.SenderEndpoints[i]))
+	}
+
 	return &grpc.ReceiveMaterialRequestRequest{
 		RecipientPublicKey:     iRequest.RecipientPublicKey,
 		MainNodeId:             iRequest.MainNodeId,
@@ -59,7 +90,41 @@ func convertReceiverMaterialRequestToGrpc(
 		SenderSignatureOptions: grpcOptions,
 		SenderPublicKey:        iRequest.SenderPublicKey,
 		Nodes:                  grpcNodes,
+		SenderEndpoints:        endpoints,
 	}
+}
+
+func makeGrpcReceiveMaterialResponseRequest(
+	iResponseId string,
+	iIsRequestAccepted bool,
+	iMessage string,
+	iNewNodeId string,
+) grpc.ReceiveMaterialResponseRequest {
+	return grpc.ReceiveMaterialResponseRequest{
+		ResponseId:        iResponseId,
+		IsRequestAccepted: iIsRequestAccepted,
+		Message:           iMessage,
+		NewNodeId:         iNewNodeId,
+	}
+}
+
+func convertReceiveMaterialResponseToGrpc(
+	iResponse ReceiveMaterialResponse,
+) *grpc.ReceiveMaterialResponseRequest {
+	request := makeGrpcReceiveMaterialResponseRequest(
+		iResponse.ResponseId,
+		iResponse.IsRequestAccepted,
+		iResponse.Message,
+		iResponse.NewNodeId,
+	)
+	return &request
+}
+
+func convertGrpcToReceiveMaterialResponseAcknowledgement(
+	iResponse *grpc.ReceiveMaterialResponseResponse,
+) ReceiveMaterialResponseAcknowledgement {
+	ack := MakeReceiveMaterialResponseAcknowledgement()
+	return ack
 }
 
 func (s PeerMaterialClientServiceGrpc) SendReceiveMaterialRequest(
@@ -78,4 +143,18 @@ func (s PeerMaterialClientServiceGrpc) SendReceiveMaterialRequest(
 	}
 
 	return MakeReceiveMaterialRequestResponse(response.ResponseId, response.RequestAcknowledged), nil
+}
+
+func (s PeerMaterialClientServiceGrpc) SendReceiveMaterialResponse(
+	iCtx context.Context,
+	iResponse ReceiveMaterialResponse,
+) (ReceiveMaterialResponseAcknowledgement, error) {
+	response := convertReceiveMaterialResponseToGrpc(iResponse)
+	ack, err := s.client.SendReceiveMaterialResponse(iCtx, response)
+	if err != nil {
+		return ReceiveMaterialResponseAcknowledgement{}, err
+	}
+
+	parsedAck := convertGrpcToReceiveMaterialResponseAcknowledgement(ack)
+	return parsedAck, nil
 }

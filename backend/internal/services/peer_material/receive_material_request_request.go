@@ -23,6 +23,13 @@ type SignatureOption struct {
 	Signature string
 }
 
+type SenderEndpoint struct {
+	Protocol     string
+	MajorVersion int
+	MinorVersion int
+	Url          string
+}
+
 type ReceiveMaterialRequestRequest struct {
 	RecipientPublicKey string
 	MainNodeId         string
@@ -30,6 +37,7 @@ type ReceiveMaterialRequestRequest struct {
 	TransferTime       time.Time
 	SenderPublicKey    string
 	SignatureOptions   []SignatureOption
+	SenderEndpoints    []SenderEndpoint
 }
 
 func MakeNodeSignatureOption(
@@ -42,6 +50,20 @@ func MakeNodeSignatureOption(
 	}
 }
 
+func MakeSenderEndpoint(
+	iProtocol string,
+	iMajorVersion int,
+	iMinorVersion int,
+	iUrl string,
+) SenderEndpoint {
+	return SenderEndpoint{
+		Protocol:     iProtocol,
+		MajorVersion: iMajorVersion,
+		MinorVersion: iMinorVersion,
+		Url:          iUrl,
+	}
+}
+
 func MakeReceiveMaterialRequestRequest(
 	iRecipientPublicKey string,
 	iMainNodeId string,
@@ -49,6 +71,7 @@ func MakeReceiveMaterialRequestRequest(
 	iTransferTime time.Time,
 	iSenderPublicKey string,
 	iSignatureOptions []SignatureOption,
+	iSenderEndpoints []SenderEndpoint,
 ) ReceiveMaterialRequestRequest {
 	return ReceiveMaterialRequestRequest{
 		RecipientPublicKey: iRecipientPublicKey,
@@ -57,5 +80,6 @@ func MakeReceiveMaterialRequestRequest(
 		TransferTime:       iTransferTime,
 		SignatureOptions:   iSignatureOptions,
 		SenderPublicKey:    iSenderPublicKey,
+		SenderEndpoints:    iSenderEndpoints,
 	}
 }

@@ -77,7 +77,10 @@ func (r PeerRepositorySql) FetchPeerEndPoints(
 		SELECT 
 			pe.id,
 			pe.url,
-			pr.protocol
+			pr.id,
+			pr.protocol,
+			pr.major_version,
+			pr.minor_version
 		FROM "peer_endpoint" pe
 		INNER JOIN "supported_peer_protocol" pr
 		ON pe.peer_id = $1 AND pe.protocol_id = pr.id
@@ -90,12 +93,18 @@ func (r PeerRepositorySql) FetchPeerEndPoints(
 	ret := []models.PeerEndpoint{}
 	for result.Next() {
 		var endpointId int
-		var endpointUrl, endpointProtocol string
+		var endpointUrl string
+		protocolId := models.PeerProtocolId(0)
+		protocolName := models.ProtocolName("")
+		protocolMajor, protocolMinor := 0, 0
 
 		err := result.Scan(
 			&endpointId,
 			&endpointUrl,
-			&endpointProtocol,
+			&protocolId,
+			&protocolName,
+			&protocolMajor,
+			&protocolMinor,
 		)
 
 		if err != nil {
@@ -105,7 +114,12 @@ func (r PeerRepositorySql) FetchPeerEndPoints(
 		endpoint := models.MakePeerEndpoint(
 			endpointId,
 			endpointUrl,
-			models.PeerProtocol(endpointProtocol),
+			models.MakePeerProtocol(
+				protocolId,
+				protocolName,
+				protocolMajor,
+				protocolMinor,
+			),
 		)
 		ret = append(ret, endpoint)
 	}

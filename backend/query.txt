@@ -42,7 +42,7 @@ mutation {
 }
 
 query {
-  materialByNodeId(nodeId: "peer_0/86f54d62-2511-4e63-a027-867a951b9dd2") {
+  materialByNodeId(nodeId: "peer_0/923851f3-dd54-4721-bc28-0f83ff9e0abe") {
     Id,
     Name,
     Unit,
@@ -70,8 +70,8 @@ query {
 
 mutation {
   transferMaterial(
-    materialId: 3,
-		peerPublicKeyId: 6,
+    materialId: 0,
+		peerPublicKeyId: 2,
     relatedMaterialsId: [],
   ) {
     Accepted

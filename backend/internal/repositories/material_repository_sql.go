@@ -61,14 +61,28 @@ func (r MaterialRepositorySql) AddMaterial(
 }
 
 func (r MaterialRepositorySql) FetchMaterialsByOwner(
+	iContext context.Context,
+	iNamespace string,
 	iOwnerKey models.PublicKey,
 	iMinId int,
 	iLimit int,
 ) ([]models.Material, error) {
-	nodes, err := r.nodeRepository.FetchNodesByOwnerKey(iOwnerKey, iMinId, iLimit)
+	nodes, err := r.nodeRepository.FetchNodesByOwnerKey(
+		iContext,
+		iNamespace,
+		iOwnerKey,
+		iMinId,
+		iLimit,
+	)
+
 	if err != nil {
 		return []models.Material{}, err
 	}
+
+	if len(nodes) == 0 {
+		return []models.Material{}, nil
+	}
+
 	statement := `SELECT 
 			name,
 			quantity,
@@ -114,6 +128,44 @@ func (r MaterialRepositorySql) FetchMaterialsByOwner(
 	return ret, nil
 }
 
+func (r MaterialRepositorySql) fetchMaterialByNode(
+	iContext context.Context,
+	iNode models.Node,
+) (models.Material, error) {
+	row := r.db.QueryRowContext(iContext, `
+		SELECT 
+			name,
+			quantity,
+			unit
+		FROM "material" 
+		WHERE node_id = $1
+	`, *iNode.Id)
+	fmt.Println(123)
+
+	var name string
+	var quantity models.CustomDecimal
+	var unit string
+
+	err := row.Scan(
+		&name,
+		&quantity,
+		&unit,
+	)
+	if err == sql.ErrNoRows {
+		return models.Material{}, common.NotFound
+	} else if err != nil {
+		return models.Material{}, err
+	}
+
+	material := models.NewMaterial(
+		iNode,
+		name,
+		quantity,
+		unit,
+	)
+	return material, nil
+}
+
 func (r MaterialRepositorySql) FetchMaterialById(
 	iContext context.Context,
 	iId models.NodeId,
@@ -126,43 +178,59 @@ func (r MaterialRepositorySql) FetchMaterialById(
 		return models.Material{}, common.NotFound
 	}
 	node := nodes[0]
-	row := r.db.QueryRowContext(iContext, `
-		SELECT 
-			name,
-			quantity,
-			unit
-		FROM "material" 
-		WHERE node_id = $1
-	`, *node.Id)
-
-	var name string
-	var quantity models.CustomDecimal
-	var unit string
-
-	err = row.Scan(
-		&name,
-		&quantity,
-		&unit,
+	material, err := r.fetchMaterialByNode(
+		iContext,
+		node,
 	)
-	if err == sql.ErrNoRows {
-		return models.Material{}, common.NotFound
-	} else if err != nil {
+	if err != nil {
 		return models.Material{}, err
 	}
-
-	material := models.NewMaterial(
-		node,
-		name,
-		quantity,
-		unit,
-	)
 	return material, nil
+}
+
+func (r MaterialRepositorySql) FetchMaterialsByNodeId(
+	iContext context.Context,
+	iNamespace string,
+	iMaterialNodeId map[string]bool,
+) (map[models.NodeId]models.Material, error) {
+	if len(iMaterialNodeId) == 0 {
+		return map[models.NodeId]models.Material{}, nil
+	}
+
+	nodes, err := r.nodeRepository.FetchNodesByNodeId(
+		iContext,
+		iNamespace,
+		iMaterialNodeId,
+	)
+
+	if err != nil {
+		return map[models.NodeId]models.Material{}, err
+	}
+
+	if len(nodes) == 0 {
+		return map[models.NodeId]models.Material{}, nil
+	}
+
+	materials := map[models.NodeId]models.Material{}
+	for nodeId := range nodes {
+		material, err := r.fetchMaterialByNode(iContext, nodes[nodeId])
+		if err != nil {
+			return map[models.NodeId]models.Material{}, err
+		}
+		materials[*material.Id] = material
+	}
+
+	return materials, nil
 }
 
 func (r MaterialRepositorySql) FetchMaterialsById(
 	iContext context.Context,
 	iIds map[models.NodeId]bool,
 ) (map[models.NodeId]models.Material, error) {
+	if len(iIds) == 0 {
+		return map[models.NodeId]models.Material{}, nil
+	}
+
 	ids := []models.NodeId{}
 	for id := range iIds {
 		ids = append(ids, id)
@@ -199,6 +267,8 @@ func (r MaterialRepositorySql) FetchMaterialsById(
 	`
 
 	query += strings.Join(argString, " OR ")
+	fmt.Println("query")
+	fmt.Println(query)
 	response, err := r.db.QueryContext(
 		iContext,
 		query,
@@ -237,4 +307,126 @@ func (r MaterialRepositorySql) FetchMaterialsById(
 	}
 
 	return materials, nil
+}
+
+func (r MaterialRepositorySql) upsertMaterialsByIds(
+	iContext context.Context,
+	iMaterials []models.Material,
+) error {
+	argString := []string{}
+	arg := []interface{}{}
+	count := 1
+	query := `
+		INSERT INTO "material" (
+			node_id,
+			name,
+			quantity,
+			unit
+		) VALUES 
+	`
+	for i := range iMaterials {
+		argString = append(argString, fmt.Sprintf("($%d, $%d, $%d, $%d)", count, count+1, count+2, count+3))
+		arg = append(arg, []interface{}{
+			*iMaterials[i].Id,
+			iMaterials[i].Name,
+			iMaterials[i].Quantity,
+			iMaterials[i].Unit,
+		}...)
+		count += 4
+	}
+
+	query += strings.Join(argString, ",")
+	query += ` 
+		ON CONFLICT (node_id)
+		DO UPDATE 
+			SET 
+				name=EXCLUDED.name,
+				quantity=EXCLUDED.quantity,
+				unit=EXCLUDED.unit
+	`
+	result, err := r.db.QueryContext(
+		iContext,
+		query,
+		arg...,
+	)
+
+	if err != nil {
+		return err
+	}
+	defer result.Close()
+	return nil
+}
+
+func (r MaterialRepositorySql) UpsertMaterialsByIds(
+	iContext context.Context,
+	iMaterials map[models.NodeId]models.Material,
+) (map[models.NodeId]models.Material, error) {
+	if len(iMaterials) == 0 {
+		return map[models.NodeId]models.Material{}, nil
+	}
+
+	nodes := map[models.NodeId]models.Node{}
+	materialArray := make([]models.Material, 0, len(iMaterials))
+	for id := range iMaterials {
+		nodes[id] = iMaterials[id].Node
+		materialArray = append(materialArray, iMaterials[id])
+	}
+
+	nodes, err := r.nodeRepository.UpsertNodesById(
+		iContext,
+		nodes,
+	)
+
+	if err != nil {
+		return map[models.NodeId]models.Material{}, err
+	}
+
+	err = r.upsertMaterialsByIds(
+		iContext,
+		materialArray,
+	)
+
+	return iMaterials, nil
+}
+
+func (r MaterialRepositorySql) UpsertMaterialsByNodeIdsAndNamespace(
+	iContext context.Context,
+	iNamespace string,
+	iMaterials map[string]models.Material,
+) (map[string]models.Material, error) {
+	if len(iMaterials) == 0 {
+		return map[string]models.Material{}, nil
+	}
+
+	nodes := map[string]models.Node{}
+	materialArray := make([]models.Material, 0, len(iMaterials))
+	for id := range iMaterials {
+		material := iMaterials[id]
+		material.Node.Namespace = &iNamespace
+		nodes[id] = material.Node
+		materialArray = append(materialArray, material)
+	}
+	nodes, err := r.nodeRepository.UpsertNodesByNodeIdAndNamespace(
+		iContext,
+		iNamespace,
+		nodes,
+	)
+
+	if err != nil {
+		return map[string]models.Material{}, err
+	}
+
+	ret := map[string]models.Material{}
+	for i := range materialArray {
+		materialArray[i].Node = nodes[materialArray[i].NodeId]
+		ret[materialArray[i].NodeId] = materialArray[i]
+	}
+
+	err = r.upsertMaterialsByIds(iContext, materialArray)
+
+	if err != nil {
+		return map[string]models.Material{}, err
+	}
+
+	return ret, nil
 }

@@ -13,7 +13,17 @@ func ProvidePeerMaterialController(
 	if err != nil {
 		return err
 	}
-	return iContainer.Provide(func(iController *PeerMaterialController) peer_material_services.ReceiveMaterialRequestReceivedHandler {
+	err = iContainer.Provide(func(iController *PeerMaterialController) peer_material_services.ReceiveMaterialRequestReceivedHandler {
 		return iController
 	})
+	if err != nil {
+		return err
+	}
+	err = iContainer.Provide(func(iController *PeerMaterialController) peer_material_services.ReceiveMaterialResponseHandler {
+		return iController
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }

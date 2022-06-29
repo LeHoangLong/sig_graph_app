@@ -29,6 +29,8 @@ type PeerMaterialController struct {
 	pendingMaterialReceiveRequestResponseRepository peer_material_repositories.MaterialReceiveRequestAcknowledgementRepositoryI
 	peerRepository                                  repositories.PeerRepositoryI
 	peerKeyRepository                               repositories.PeerKeyRepositoryI
+	userEndpointRepository                          repositories.UserEndpointRepositoryI
+	materialReceiveRequestAcknowledgementRepository peer_material_repositories.MaterialReceiveRequestAcknowledgementRepositoryI
 }
 
 func MakePeerMaterialController(
@@ -44,6 +46,8 @@ func MakePeerMaterialController(
 	iPeerRepository repositories.PeerRepositoryI,
 	iPeerKeyRepository repositories.PeerKeyRepositoryI,
 	iMaterialTransferService material_contract_service.MaterialTransferServiceI,
+	iUserEndpointRepository repositories.UserEndpointRepositoryI,
+	iMaterialReceiveRequestAcknowledgementRepository peer_material_repositories.MaterialReceiveRequestAcknowledgementRepositoryI,
 ) *PeerMaterialController {
 	return &PeerMaterialController{
 		userService:          iUserService,
@@ -58,6 +62,8 @@ func MakePeerMaterialController(
 		peerRepository:          iPeerRepository,
 		peerKeyRepository:       iPeerKeyRepository,
 		materialTransferService: iMaterialTransferService,
+		userEndpointRepository:  iUserEndpointRepository,
+		materialReceiveRequestAcknowledgementRepository: iMaterialReceiveRequestAcknowledgementRepository,
 	}
 }
 
@@ -69,11 +75,13 @@ func (c *PeerMaterialController) Handle(
 	if err != nil {
 		return peer_material_services.ReceiveMaterialRequestResponse{}, err
 	}
+	fmt.Println(1)
 
 	toBeReceivedMaterial, err := c.materialFetchService.GetMaterialById(iRequest.MainNodeId)
 	if err != nil {
 		return peer_material_services.ReceiveMaterialRequestResponse{}, err
 	}
+	fmt.Println(2)
 
 	fetchedMaterials := []models.Material{toBeReceivedMaterial}
 	for nodeId := range iRequest.Nodes {
@@ -105,6 +113,7 @@ func (c *PeerMaterialController) Handle(
 			fetchedMaterials = append(fetchedMaterials, relatedMaterial)
 		}
 	}
+	fmt.Println(3)
 
 	materialOwnerKeyMap := map[string]bool{}
 	for index := range fetchedMaterials {
@@ -115,15 +124,17 @@ func (c *PeerMaterialController) Handle(
 	for key := range materialOwnerKeyMap {
 		materialOwnerKeys = append(materialOwnerKeys, key)
 	}
+	fmt.Println(4)
 
 	materialOwnerKeyModels, err := c.peerKeyRepository.CreateOrFetchPeerKeysByValue(
 		iContext,
-		user,
+		user.Id,
 		materialOwnerKeys,
 	)
 	if err != nil {
 		return peer_material_services.ReceiveMaterialRequestResponse{}, err
 	}
+	fmt.Println(5)
 
 	materialOwnerKeyModelsIdMap := map[string]models.PublicKeyId{}
 	for index := range materialOwnerKeyModels {
@@ -135,13 +146,31 @@ func (c *PeerMaterialController) Handle(
 		fetchedMaterials[index].OwnerPublicKey.Id = &id
 	}
 
-	fetchedMaterials, err = c.materialRepositoryService.SaveMaterials(
+	namespace := services.UserIdToNamespace(user.Id)
+	fetchedMaterials, err = c.materialRepositoryService.SaveMaterialsIgnoreId(
 		iContext,
+		namespace,
 		fetchedMaterials,
 	)
+
+	unlinkedMaterials := map[models.NodeId]models.Material{}
+	for i := range fetchedMaterials {
+		unlinkedMaterials[*fetchedMaterials[i].Id] = fetchedMaterials[i]
+	}
+	linkedMaterials, err := c.materialRepositoryService.LinkMaterials(
+		iContext,
+		namespace,
+		unlinkedMaterials,
+	)
+	fetchedMaterials = []models.Material{}
+	for id := range linkedMaterials {
+		fetchedMaterials = append(fetchedMaterials, linkedMaterials[id])
+	}
+
 	if err != nil {
 		return peer_material_services.ReceiveMaterialRequestResponse{}, err
 	}
+	fmt.Println(6)
 
 	options := []models.SignatureOption{}
 	for _, option := range iRequest.SignatureOptions {
@@ -157,11 +186,15 @@ func (c *PeerMaterialController) Handle(
 		fetchedMaterials[1:],
 		options,
 		models.CustomTime(iRequest.TransferTime),
+		iRequest.SenderEndpoints,
 	)
 
+	fmt.Println("err")
+	fmt.Println(err)
 	if err != nil {
 		return peer_material_services.ReceiveMaterialRequestResponse{}, nil
 	}
+	fmt.Println(7)
 
 	response, err := c.pendingMaterialReceiveRequestResponseRepository.SaveAcknowledgement(
 		pendingRequest.Id,
@@ -288,6 +321,21 @@ func (c *PeerMaterialController) SendRequest(
 		return models.OutboundMaterialReceiveRequest{}, common.NotFound
 	}
 
+	userEndpoints, err := c.userEndpointRepository.FetchUserEndpointByUserId(
+		iContext,
+		senderId,
+	)
+	senderEndpoints := []peer_material_services.SenderEndpoint{}
+	for i := range userEndpoints {
+		senderEndpoint := peer_material_services.MakeSenderEndpoint(
+			string(userEndpoints[i].Protocol.Name),
+			userEndpoints[i].Protocol.MajorVersion,
+			userEndpoints[i].Protocol.MinorVersion,
+			userEndpoints[i].Url,
+		)
+		senderEndpoints = append(senderEndpoints, senderEndpoint)
+	}
+
 	peerRequest := peer_material_services.MakeReceiveMaterialRequestRequest(
 		recipientPublicKey,
 		mainMaterial.NodeId,
@@ -295,6 +343,7 @@ func (c *PeerMaterialController) SendRequest(
 		time.Time(transferTime),
 		keyToUse.PublicKey.Value,
 		serviceLayerOptions,
+		senderEndpoints,
 	)
 
 	endpoints, err := c.peerRepository.FetchPeerEndPoints(iContext, peer.Id)
@@ -304,7 +353,12 @@ func (c *PeerMaterialController) SendRequest(
 
 	requestReceived := false
 	for _, endpoint := range endpoints {
-		client, err := c.peerClientFactory.BuildPeerMaterialClientService(endpoint)
+		client, err := c.peerClientFactory.BuildPeerMaterialClientService(
+			endpoint.Protocol.Name,
+			endpoint.Protocol.MajorVersion,
+			endpoint.Protocol.MinorVersion,
+			endpoint.Url,
+		)
 		if err != nil {
 			continue
 		}
@@ -351,6 +405,7 @@ func (c *PeerMaterialController) AcceptPendingMaterialReceiveRequest(
 	iUserId models.UserId,
 	iRequestId models.MaterialReceiveRequestId,
 	iAccept bool,
+	iMessage string,
 ) error {
 	pendingRequests, err := c.pendingMaterialReceiveRequestRepositoryService.FetchInboundReceiveMaterialRequestsByUser(
 		iContext,
@@ -361,11 +416,11 @@ func (c *PeerMaterialController) AcceptPendingMaterialReceiveRequest(
 		return err
 	}
 
-	//pendingRequest := models.InboundMaterialReceiveRequest{}
+	pendingRequest := models.InboundMaterialReceiveRequest{}
 	found := false
 	for i := range pendingRequests {
 		if pendingRequests[i].Id == iRequestId {
-			//pendingRequest = pendingRequests[i]
+			pendingRequest = pendingRequests[i]
 			found = true
 			break
 		}
@@ -375,10 +430,19 @@ func (c *PeerMaterialController) AcceptPendingMaterialReceiveRequest(
 		return common.NotFound
 	}
 
+	acknowledgement, err := c.materialReceiveRequestAcknowledgementRepository.FetchAcknowledementByRequestId(
+		iContext,
+		iRequestId,
+	)
+
+	if err != nil {
+		return err
+	}
+
 	if !iAccept {
 		/// set request status to rejected
 		/// and send response to peer
-		_, err := c.pendingMaterialReceiveRequestRepositoryService.UpdateMaterialReceiveRequestStatus(
+		err := c.pendingMaterialReceiveRequestRepositoryService.UpdateMaterialReceiveRequestStatus(
 			iContext,
 			iRequestId,
 			models.REJECTED,
@@ -388,9 +452,72 @@ func (c *PeerMaterialController) AcceptPendingMaterialReceiveRequest(
 			return err
 		}
 
+		response := peer_material_services.MakeReceiveMaterialResponse(
+			string(acknowledgement.ResponseId),
+			false,
+			iMessage,
+			"",
+		)
+
 		/// send response to peer
-		/// c.peer
+		responseSent := false
+		for _, endpoint := range pendingRequest.SenderEndpoints {
+			/// try sending
+			client, err := c.peerClientFactory.BuildPeerMaterialClientService(
+				endpoint.Protocol.Name,
+				endpoint.Protocol.MajorVersion,
+				endpoint.Protocol.MinorVersion,
+				endpoint.Url,
+			)
+
+			if err != nil {
+				return nil
+			}
+
+			_, err = client.SendReceiveMaterialResponse(
+				iContext,
+				response,
+			)
+
+			if err != nil {
+				continue
+			}
+
+			responseSent = true
+			break
+		}
+
+		if !responseSent {
+			return fmt.Errorf("Could not send response")
+		}
+
 	}
 
 	return nil
+}
+
+func (c *PeerMaterialController) HandleReponse(
+	iContext context.Context,
+	iRequest peer_material_services.ReceiveMaterialResponse,
+) (peer_material_services.ReceiveMaterialResponseAcknowledgement, error) {
+	ack, err := c.materialReceiveRequestAcknowledgementRepository.FetchAcknowledementByResponseId(
+		iContext,
+		models.MaterialReceiveRequestResponseId(iRequest.ResponseId),
+	)
+
+	if err != nil {
+		return peer_material_services.ReceiveMaterialResponseAcknowledgement{}, err
+	}
+
+	err = c.pendingMaterialReceiveRequestRepositoryService.UpdateMaterialReceiveRequestStatus(
+		iContext,
+		ack.RequestId,
+		models.REJECTED,
+	)
+
+	if err != nil {
+		return peer_material_services.ReceiveMaterialResponseAcknowledgement{}, err
+	}
+
+	return peer_material_services.MakeReceiveMaterialResponseAcknowledgement(), nil
 }

@@ -1,7 +1,9 @@
 package peer_material_repositories
 
 import (
+	"backend/internal/common"
 	"backend/internal/models"
+	"context"
 	"database/sql"
 )
 
@@ -36,4 +38,70 @@ func (r MaterialReceiveRequestAcknowledgementRepositorySql) SaveAcknowledgement(
 		iRequestId,
 		iResponseId,
 	), nil
+}
+
+func (r MaterialReceiveRequestAcknowledgementRepositorySql) FetchAcknowledementByRequestId(
+	iContext context.Context,
+	iRequestId models.MaterialReceiveRequestId,
+) (models.MaterialReceiveRequestAcknowledgement, error) {
+	response := r.db.QueryRowContext(
+		iContext,
+		`
+			SELECT (
+				request_id,
+				response_id
+			) FROM "receive_material_request_acknowledgement"
+			WHERE response_id=$1
+		`, iRequestId,
+	)
+
+	requestId := models.MaterialReceiveRequestId(0)
+	responseId := models.MaterialReceiveRequestResponseId("")
+	err := response.Scan(&requestId, &responseId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return models.MaterialReceiveRequestAcknowledgement{}, common.NotFound
+		}
+		return models.MaterialReceiveRequestAcknowledgement{}, err
+	}
+
+	acknowledgement := models.MakeMaterialReceiveRequestAcknowledgement(
+		requestId,
+		responseId,
+	)
+
+	return acknowledgement, nil
+}
+
+func (r MaterialReceiveRequestAcknowledgementRepositorySql) FetchAcknowledementByResponseId(
+	iContext context.Context,
+	iResponseId models.MaterialReceiveRequestResponseId,
+) (models.MaterialReceiveRequestAcknowledgement, error) {
+	response := r.db.QueryRowContext(
+		iContext,
+		`
+			SELECT (
+				request_id,
+				response_id
+			) FROM "receive_material_request_acknowledgement"
+			WHERE response_id=$1
+		`, iResponseId,
+	)
+
+	requestId := models.MaterialReceiveRequestId(0)
+	responseId := models.MaterialReceiveRequestResponseId("")
+	err := response.Scan(&requestId, &responseId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return models.MaterialReceiveRequestAcknowledgement{}, common.NotFound
+		}
+		return models.MaterialReceiveRequestAcknowledgement{}, err
+	}
+
+	acknowledgement := models.MakeMaterialReceiveRequestAcknowledgement(
+		requestId,
+		responseId,
+	)
+
+	return acknowledgement, nil
 }

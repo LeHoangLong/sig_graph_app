@@ -1,7 +1,9 @@
 package peer_material_repositories
 
 import (
+	"backend/internal/common"
 	"backend/internal/models"
+	"backend/internal/repositories"
 	"context"
 	"database/sql"
 	"fmt"
@@ -9,14 +11,17 @@ import (
 )
 
 type MaterialReceiveRequestRepositorySql struct {
-	db *sql.DB
+	db                     *sql.DB
+	peerProtocolRepository repositories.PeerProtocolRepositoryI
 }
 
 func MakeMaterialReceiveRequestRepositorySql(
 	iDb *sql.DB,
+	iPeerProtocolRepository repositories.PeerProtocolRepositoryI,
 ) MaterialReceiveRequestRepositorySql {
 	return MaterialReceiveRequestRepositorySql{
-		db: iDb,
+		db:                     iDb,
+		peerProtocolRepository: iPeerProtocolRepository,
 	}
 }
 
@@ -190,12 +195,17 @@ func (r MaterialReceiveRequestRepositorySql) CreateInboundReceiveMaterialRequest
 	iOptions []models.SignatureOption,
 	iTransferTime models.CustomTime,
 	iStatus models.MaterialReceiveRequestStatus,
+	iSenderEndpoints []models.SenderEndpoint,
 ) (models.InboundMaterialReceiveRequest, error) {
+	if len(iSenderEndpoints) == 0 {
+		return models.InboundMaterialReceiveRequest{}, common.InvalidArgument
+	}
+
 	tx, err := r.db.BeginTx(iContext, nil)
 	if err != nil {
 		return models.InboundMaterialReceiveRequest{}, fmt.Errorf("cannot start transaction %w", err)
 	}
-	pendingReceiveMaterialRequestId, err := r.createReceiveMaterialRequest(
+	receiveMaterialRequestId, err := r.createReceiveMaterialRequest(
 		iContext,
 		tx,
 		*iToBeReceivedMaterial.Id,
@@ -204,6 +214,8 @@ func (r MaterialReceiveRequestRepositorySql) CreateInboundReceiveMaterialRequest
 		iOptions,
 		iStatus,
 	)
+	fmt.Println("receiveMaterialRequestId")
+	fmt.Println(receiveMaterialRequestId)
 	if err != nil {
 		tx.Rollback()
 		return models.InboundMaterialReceiveRequest{}, err
@@ -220,16 +232,43 @@ func (r MaterialReceiveRequestRepositorySql) CreateInboundReceiveMaterialRequest
 			$2,
 			$3
 		)
-	`, pendingReceiveMaterialRequestId, iRecipientUserId, iSenderPublicKeyId)
+	`, receiveMaterialRequestId, iRecipientUserId, iSenderPublicKeyId)
 	if err != nil {
 		tx.Rollback()
 		return models.InboundMaterialReceiveRequest{}, err
 	}
 
+	argString := []string{}
+	arg := []interface{}{receiveMaterialRequestId}
+	count := 2
+	for i := range iSenderEndpoints {
+		arg = append(arg, iSenderEndpoints[i].Url, iSenderEndpoints[i].Protocol.Id)
+		argString = append(argString, fmt.Sprintf("($1, $%d, $%d)", count, count+1))
+		count += 2
+	}
+
+	{
+		query := `INSERT INTO "inbound_receive_material_request_sender_endpoint" (
+			request_id,
+			url,
+			protocol_id
+		) VALUES `
+		query += strings.Join(argString, ",")
+		_, err = r.db.QueryContext(
+			iContext,
+			query,
+			arg...,
+		)
+		if err != nil {
+			tx.Rollback()
+			return models.InboundMaterialReceiveRequest{}, err
+		}
+	}
+
 	tx.Commit()
 
 	pendingRequest := models.MakeMaterialReceiveRequest(
-		pendingReceiveMaterialRequestId,
+		receiveMaterialRequestId,
 		iToBeReceivedMaterial,
 		iRelatedMaterials,
 		iOptions,
@@ -241,6 +280,7 @@ func (r MaterialReceiveRequestRepositorySql) CreateInboundReceiveMaterialRequest
 		pendingRequest,
 		iRecipientUserId,
 		iSenderPublicKeyId,
+		iSenderEndpoints,
 	)
 	return inboundRequest, nil
 }
@@ -398,6 +438,92 @@ func (r MaterialReceiveRequestRepositorySql) FetchInboundReceiveMaterialRequests
 		}
 	}
 
+	/// fetch sender endpoints
+	senderEndpoints := map[models.MaterialReceiveRequestId][]models.SenderEndpoint{}
+	{
+		type TempSenderEndpoint struct {
+			RequestId  models.MaterialReceiveRequestId
+			Url        string
+			ProtocolId models.PeerProtocolId
+		}
+
+		tempSenderEndpoints := map[models.MaterialReceiveRequestId][]TempSenderEndpoint{}
+
+		argStr := []string{}
+		arg := []interface{}{}
+		count := 1
+
+		for id := range fetchedRequests {
+			argStr = append(argStr, fmt.Sprintf("(request_id=$%d)", count))
+			arg = append(arg, id)
+			count++
+		}
+
+		query := `
+			SELECT 
+				request_id,
+				url,
+				protocol_id
+			FROM "inbound_receive_material_request_sender_endpoint"
+			WHERE 
+		`
+		query += strings.Join(argStr, " OR ")
+		response, err := r.db.QueryContext(
+			iContext,
+			query,
+			arg...,
+		)
+		if err != nil {
+			return []SimplifiedInboundReceiveMaterialRequest{}, nil
+		}
+		defer response.Close()
+		for response.Next() {
+			requestId := models.MaterialReceiveRequestId(0)
+			url := ""
+			protocolId := models.PeerProtocolId(0)
+			err = response.Scan(
+				&requestId,
+				&url,
+				&protocolId,
+			)
+			if err != nil {
+				return []SimplifiedInboundReceiveMaterialRequest{}, nil
+			}
+			tempSenderEndpoints[requestId] = append(tempSenderEndpoints[requestId], TempSenderEndpoint{
+				RequestId:  requestId,
+				Url:        url,
+				ProtocolId: protocolId,
+			})
+		}
+
+		peerProtocolIds := map[models.PeerProtocolId]bool{}
+		for key := range tempSenderEndpoints {
+			for i := range tempSenderEndpoints[key] {
+				peerProtocolIds[tempSenderEndpoints[key][i].ProtocolId] = true
+			}
+		}
+
+		peerProtocols, err := r.peerProtocolRepository.FetchPeerProtocolByIds(
+			iContext,
+			peerProtocolIds,
+		)
+		if err != nil {
+			return []SimplifiedInboundReceiveMaterialRequest{}, nil
+		}
+
+		for requestId := range tempSenderEndpoints {
+			for i := range tempSenderEndpoints[requestId] {
+				protocolId := tempSenderEndpoints[requestId][i].ProtocolId
+				url := tempSenderEndpoints[requestId][i].Url
+				if peerProtocol, ok := peerProtocols[protocolId]; ok {
+					senderEndpoints[requestId] = append(senderEndpoints[requestId],
+						models.MakeSenderEndpoint(peerProtocol, url),
+					)
+				}
+			}
+		}
+	}
+
 	ret := []SimplifiedInboundReceiveMaterialRequest{}
 	for requestId := range fetchedRequests {
 		relatedMaterialIds := []models.NodeId{}
@@ -410,7 +536,7 @@ func (r MaterialReceiveRequestRepositorySql) FetchInboundReceiveMaterialRequests
 			signatureOptions = fetchedSignatureOptions
 		}
 
-		request := makeSimplifiedReceiveMaterialRequest(
+		request := makeSimplifiedInboundReceiveMaterialRequest(
 			requestId,
 			iUserId,
 			fetchedRequests[requestId].mainMaterialId,
@@ -419,10 +545,36 @@ func (r MaterialReceiveRequestRepositorySql) FetchInboundReceiveMaterialRequests
 			fetchedRequests[requestId].senderPublicKeyId,
 			fetchedRequests[requestId].transferTime,
 			fetchedRequests[requestId].status,
+			senderEndpoints[requestId],
 		)
 
 		ret = append(ret, request)
 	}
 
 	return ret, nil
+}
+
+func (r MaterialReceiveRequestRepositorySql) UpdateMaterialReceiveRequestStatus(
+	iContext context.Context,
+	iRequestId models.MaterialReceiveRequestId,
+	iStatus models.MaterialReceiveRequestStatus,
+) error {
+	response := r.db.QueryRowContext(
+		iContext,
+		`
+			UPDATE "receive_material_request" SET status_id=$1 WHERE id=$2 RETURNING id
+		`, iStatus, iRequestId,
+	)
+
+	temp := models.MaterialReceiveRequestId(0)
+	err := response.Scan(&temp)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return common.NotFound
+		}
+		return err
+	}
+
+	return nil
 }

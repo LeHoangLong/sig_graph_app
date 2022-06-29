@@ -22,7 +22,7 @@ func MakePeerKeyRepositorySql(
 
 func (r PeerKeyRepositorySql) CreateOrFetchPeerKeysByValue(
 	iContext context.Context,
-	iOwner models.User,
+	iOwnerId models.UserId,
 	iPeerKeys []string,
 ) ([]models.PeerKey, error) {
 	if len(iPeerKeys) == 0 {
@@ -30,7 +30,7 @@ func (r PeerKeyRepositorySql) CreateOrFetchPeerKeysByValue(
 	}
 
 	argStr := []string{}
-	arg := []interface{}{iOwner.Id}
+	arg := []interface{}{iOwnerId}
 	count := 2
 	for _, key := range iPeerKeys {
 		argStr = append(argStr, fmt.Sprintf("(public_key.value=$%d)", count))
@@ -77,7 +77,7 @@ func (r PeerKeyRepositorySql) CreateOrFetchPeerKeysByValue(
 		}
 		existingKeysMap[keyVal] = models.MakePeerKey(
 			models.MakePublicKey(&keyId, keyVal),
-			iOwner.Id,
+			iOwnerId,
 			peerId,
 		)
 	}
@@ -122,7 +122,7 @@ func (r PeerKeyRepositorySql) CreateOrFetchPeerKeysByValue(
 		}
 
 		argStr = []string{}
-		arg = []interface{}{iOwner.Id}
+		arg = []interface{}{iOwnerId}
 		count = 2
 		for _, id := range newPublicKeyIds {
 			argStr = append(argStr, fmt.Sprintf("($%d, $1)", count))
@@ -141,7 +141,7 @@ func (r PeerKeyRepositorySql) CreateOrFetchPeerKeysByValue(
 		for index := range keysToInsert {
 			newKey := models.MakePeerKey(
 				models.MakePublicKey(&newPublicKeyIds[index], keysToInsert[index]),
-				iOwner.Id,
+				iOwnerId,
 				nil,
 			)
 			newKeysMap[newKey.Value] = newKey

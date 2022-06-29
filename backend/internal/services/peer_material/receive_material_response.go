@@ -6,3 +6,17 @@ type ReceiveMaterialResponse struct {
 	Message           string
 	NewNodeId         string
 }
+
+func MakeReceiveMaterialResponse(
+	iResponseId string,
+	iIsRequestAccepted bool,
+	iMessage string,
+	iNewNodeId string,
+) ReceiveMaterialResponse {
+	return ReceiveMaterialResponse{
+		ResponseId:        iResponseId,
+		IsRequestAccepted: iIsRequestAccepted,
+		Message:           iMessage,
+		NewNodeId:         iNewNodeId,
+	}
+}

@@ -88,6 +88,7 @@ func (c MaterialCreateService) CreateMaterial(
 		createdTime,
 		signature,
 		"material",
+		nil,
 	)
 
 	newMaterial := models.NewMaterial(

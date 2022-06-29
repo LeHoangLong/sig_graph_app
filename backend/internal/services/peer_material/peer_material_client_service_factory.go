@@ -22,19 +22,22 @@ func MakePeerMaterialClientServiceFactory() PeerMaterialClientServiceFactory {
 }
 
 func (f *PeerMaterialClientServiceFactory) BuildPeerMaterialClientService(
-	iEndpoint models.PeerEndpoint,
+	iProtocolName models.ProtocolName,
+	iMajorVersion int,
+	iMinorVersion int,
+	iUrl string,
 ) (PeerMaterialClientServiceI, error) {
-	if iEndpoint.Protocol == models.Grpc {
+	if iProtocolName == models.GRPC {
 		f.mtx.Lock()
 		defer f.mtx.Unlock()
-		if _, ok := f.grpcConnections[iEndpoint.Url]; !ok {
-			conn, err := grpc.Dial(iEndpoint.Url, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if _, ok := f.grpcConnections[iUrl]; !ok {
+			conn, err := grpc.Dial(iUrl, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
 				return nil, err
 			}
-			f.grpcConnections[iEndpoint.Url] = conn
+			f.grpcConnections[iUrl] = conn
 		}
-		service := MakePeerMaterialClientServiceGrpc(f.grpcConnections[iEndpoint.Url])
+		service := MakePeerMaterialClientServiceGrpc(f.grpcConnections[iUrl])
 		return &service, nil
 	} else {
 		return nil, common.Unsupported

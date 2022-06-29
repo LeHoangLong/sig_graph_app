@@ -14,6 +14,7 @@ type Node struct {
 	CreatedTime           CustomTime `json:"CreatedTime"`
 	Signature             string     `json:"Signature"`
 	Type                  string     `json:"Type"`
+	Namespace             *string
 }
 
 func MakeNode(
@@ -28,6 +29,7 @@ func MakeNode(
 	iCreatedTime CustomTime,
 	iSignature string,
 	iType string,
+	iNamespace *string,
 ) Node {
 	return Node{
 		Id:                    iId,
@@ -41,5 +43,6 @@ func MakeNode(
 		CreatedTime:           iCreatedTime,
 		Signature:             iSignature,
 		Type:                  iType,
+		Namespace:             iNamespace,
 	}
 }
