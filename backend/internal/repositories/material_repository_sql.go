@@ -267,8 +267,6 @@ func (r MaterialRepositorySql) FetchMaterialsById(
 	`
 
 	query += strings.Join(argString, " OR ")
-	fmt.Println("query")
-	fmt.Println(query)
 	response, err := r.db.QueryContext(
 		iContext,
 		query,

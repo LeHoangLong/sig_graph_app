@@ -214,33 +214,36 @@ func (r MaterialReceiveRequestRepositorySql) CreateInboundReceiveMaterialRequest
 		iOptions,
 		iStatus,
 	)
-	fmt.Println("receiveMaterialRequestId")
-	fmt.Println(receiveMaterialRequestId)
 	if err != nil {
 		tx.Rollback()
 		return models.InboundMaterialReceiveRequest{}, err
 	}
 
-	_, err = tx.QueryContext(
-		iContext,
-		`INSERT INTO "inbound_receive_material_request" (
-			request_id,
-			owner_id,
-			sender_public_key_id
-		) VALUES (
-			$1,
-			$2,
-			$3
-		)
-	`, receiveMaterialRequestId, iRecipientUserId, iSenderPublicKeyId)
-	if err != nil {
-		tx.Rollback()
-		return models.InboundMaterialReceiveRequest{}, err
+	{
+		response, err := tx.QueryContext(
+			iContext,
+			`INSERT INTO "inbound_receive_material_request" (
+				request_id,
+				owner_id,
+				sender_public_key_id
+			) VALUES (
+				$1,
+				$2,
+				$3
+			)
+		`, receiveMaterialRequestId, iRecipientUserId, iSenderPublicKeyId)
+		if err != nil {
+			tx.Rollback()
+			return models.InboundMaterialReceiveRequest{}, err
+		}
+		response.Close()
 	}
 
 	argString := []string{}
 	arg := []interface{}{receiveMaterialRequestId}
 	count := 2
+	fmt.Println("iSenderEndpoints")
+	fmt.Println(iSenderEndpoints)
 	for i := range iSenderEndpoints {
 		arg = append(arg, iSenderEndpoints[i].Url, iSenderEndpoints[i].Protocol.Id)
 		argString = append(argString, fmt.Sprintf("($1, $%d, $%d)", count, count+1))
@@ -254,15 +257,19 @@ func (r MaterialReceiveRequestRepositorySql) CreateInboundReceiveMaterialRequest
 			protocol_id
 		) VALUES `
 		query += strings.Join(argString, ",")
-		_, err = r.db.QueryContext(
+		response, err := tx.QueryContext(
 			iContext,
 			query,
 			arg...,
 		)
+		fmt.Println("query")
+		fmt.Println(query)
+		fmt.Println(err)
 		if err != nil {
 			tx.Rollback()
 			return models.InboundMaterialReceiveRequest{}, err
 		}
+		response.Close()
 	}
 
 	tx.Commit()

@@ -92,7 +92,8 @@ mutation {
         Quantity,
         CreatedTime,
       },
-      TransferTime
+      TransferTime,
+      Id,
     }
   }
 }
@@ -119,4 +120,12 @@ query {
       TransferTime,
   		SenderPublicKeyId,
   }
+}
+
+mutation {
+  acceptPendingReceivedTransferMaterialRequests (
+    requestId: 0,
+    accept: false,
+    message:"test",
+  )
 }

@@ -6,17 +6,32 @@ import (
 )
 
 type MaterialReceiveRequestAcknowledgementRepositoryI interface {
-	SaveAcknowledgement(
+	SaveOutboundAcknowledgement(
 		iRequestId models.MaterialReceiveRequestId,
 		iResponseId models.MaterialReceiveRequestResponseId,
 	) (models.MaterialReceiveRequestAcknowledgement, error)
 	/// returns NotFound if no acknowledgement found
-	FetchAcknowledementByRequestId(
+	FetchOutboundAcknowledementByRequestId(
 		iContext context.Context,
 		iRequestId models.MaterialReceiveRequestId,
 	) (models.MaterialReceiveRequestAcknowledgement, error)
 	/// returns NotFound if no acknowledgement found
-	FetchAcknowledementByResponseId(
+	FetchOutboundAcknowledementByResponseId(
+		iContext context.Context,
+		iResponseId models.MaterialReceiveRequestResponseId,
+	) (models.MaterialReceiveRequestAcknowledgement, error)
+
+	SaveInboundAcknowledgement(
+		iRequestId models.MaterialReceiveRequestId,
+		iResponseId models.MaterialReceiveRequestResponseId,
+	) (models.MaterialReceiveRequestAcknowledgement, error)
+	/// returns NotFound if no acknowledgement found
+	FetchInboundAcknowledementByRequestId(
+		iContext context.Context,
+		iRequestId models.MaterialReceiveRequestId,
+	) (models.MaterialReceiveRequestAcknowledgement, error)
+	/// returns NotFound if no acknowledgement found
+	FetchInboundAcknowledementByResponseId(
 		iContext context.Context,
 		iResponseId models.MaterialReceiveRequestResponseId,
 	) (models.MaterialReceiveRequestAcknowledgement, error)

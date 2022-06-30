@@ -53,15 +53,24 @@ module.exports.up = async function (next) {
     
     await client.query(`
       CREATE TABLE IF NOT EXISTS "inbound_receive_material_request_sender_endpoint" (
-          request_id INTEGER PRIMARY KEY REFERENCES "inbound_receive_material_request"(request_id) INITIALLY DEFERRED, 
+          request_id INTEGER REFERENCES "inbound_receive_material_request"(request_id) ON UPDATE CASCADE ON DELETE CASCADE INITIALLY DEFERRED, 
           url TEXT NOT NULL CHECK(LENGTH(url) > 0),
           protocol_id INTEGER REFERENCES "supported_peer_protocol"(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT NULL
       )
     `)
 
+
+    /// inbound acknowledgement is for outbound request and vice versa
     await client.query(`
-      CREATE TABLE IF NOT EXISTS "receive_material_request_acknowledgement" (
-        request_id INT REFERENCES "receive_material_request" (id) ON UPDATE CASCADE ON DELETE CASCADE NOT NULL UNIQUE,
+      CREATE TABLE IF NOT EXISTS "inbound_receive_material_request_acknowledgement" (
+        request_id INT REFERENCES "outbound_receive_material_request" (request_id) ON UPDATE CASCADE ON DELETE CASCADE NOT NULL UNIQUE INITIALLY DEFERRED,
+        response_id TEXT NOT NULL UNIQUE
+      )
+    `)
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "outbound_receive_material_request_acknowledgement" (
+        request_id INT REFERENCES "inbound_receive_material_request" (request_id) ON UPDATE CASCADE ON DELETE CASCADE NOT NULL UNIQUE INITIALLY DEFERRED,
         response_id TEXT NOT NULL UNIQUE
       )
     `)
@@ -97,7 +106,8 @@ module.exports.down = async function (next) {
     await client.query('BEGIN')
     await client.query(`DROP TABLE IF EXISTS "signature_option"`)
     await client.query(`DROP TABLE IF EXISTS "node_from_peer"`)
-    await client.query(`DROP TABLE IF EXISTS "receive_material_request_acknowledgement"`)
+    await client.query(`DROP TABLE IF EXISTS "inbound_receive_material_request_acknowledgement"`)
+    await client.query(`DROP TABLE IF EXISTS "outbound_receive_material_request_acknowledgement"`)
     await client.query(`DROP TABLE IF EXISTS "inbound_receive_material_request_sender_endpoint"`)
     await client.query(`DROP TABLE IF EXISTS "receive_material_request_response"`)
     await client.query(`DROP TABLE IF EXISTS "outbound_receive_material_request"`)
